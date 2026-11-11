@@ -24,6 +24,11 @@ from queueiq.explain import deploy
 from queueiq.explain import figures as F
 from queueiq.explain.groups import GROUPS, TARGETS
 from queueiq.explain.permutation import grouped_permutation_importance
+from queueiq.explain.reference import (
+    calibration_warning,
+    calibration_warning_values,
+    observed_reference,
+)
 from queueiq.explain.shapley import explain
 from queueiq.explain.text import narrative
 from queueiq.models.cox import CauseSpecificCox
@@ -67,6 +72,11 @@ def main() -> None:
     joblib.dump(model, deploy.MODEL_FILE, compress=3)
     joblib.dump(cox, deploy.COX_FILE, compress=3)
     background.to_parquet(deploy.BACKGROUND_FILE, index=False)
+    reference = observed_reference(entries, pd.Timestamp(config.DATA_CUTOFF))
+    cal = calibration_warning_values(
+        pd.read_csv(config.REPORTS_DIR / "evaluation_metrics.csv"), primary
+    )
+    warning = calibration_warning(cal)
     meta = {
         "primary_configuration": primary,
         "trained_on_rows": len(X),
@@ -78,6 +88,9 @@ def main() -> None:
         "outcomes_as_of": str(config.DATA_CUTOFF),
         "background_years": list(deploy.BACKGROUND_YEARS),
         "background_size": len(background),
+        "observed_reference": reference,
+        "phase5_final_test_calibration": cal,
+        "calibration_warning": warning,
     }
     deploy.META_FILE.write_text(json.dumps(meta, indent=2) + "\n")
 
@@ -151,12 +164,14 @@ def main() -> None:
         x = recent.iloc[[i]]
         tb = explain(predict, x, background, GROUPS)
         pid = ids[recent.index[i]]
-        examples.append((label, pid, x.iloc[0], tb, narrative(tb, x.iloc[0])))
+        examples.append((label, pid, x.iloc[0], tb, narrative(tb, x.iloc[0], reference)))
 
     figs = {
         "perm": save(F.permutation_importance(perm_table), "fig09_permutation_importance.png"),
         "local": save(
-            F.local_explanation(examples[0][3], "Example: " + examples[0][0] + " (2025 entrant)"),
+            F.local_explanation(
+                examples[0][3], "Example: " + examples[0][0] + " (2025 entrant)", reference, warning
+            ),
             "fig10_example_explanation.png",
         ),
     }
@@ -166,6 +181,20 @@ def main() -> None:
         )
     )
     print(f"Wrote {REPORT_FILE.name}; deployment model in models/")
+
+
+def reference_table(meta) -> pd.DataFrame:
+    rows = []
+    for target, (_, _, label) in TARGETS.items():
+        ref = meta["observed_reference"][target]
+        rows.append(
+            {
+                "headline number": label,
+                "observed for latest fully followed cohort": f"{100 * ref['observed']:.1f}% "
+                f"({ref['cohort']} entrants, n = {ref['n']:,})",
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def save(fig, name: str) -> str:
@@ -244,7 +273,8 @@ entrants), where operational AUC is not estimable (1 case). Report only.
 ## 3. What moves individual predictions (deployment model, mean |Shapley|)
 Exact grouped Shapley values (all 128 group combinations) for {N_GLOBAL} randomly chosen 2025
 entrants. The comparison point is the average prediction over {meta["background_size"]} random
-{meta["background_years"][0]}–{meta["background_years"][1]} entrants (a "typical recent project").
+{meta["background_years"][0]}–{meta["background_years"][1]} entrants: the **model's average prediction for recent entrants**.
+This is a model output, not an observed rate. See section 4 for observed rates.
 Values are the mean absolute contribution in percentage points. For every explained project, the
 contributions add up to the prediction minus the baseline, with a largest gap of {max_gap:.1e}.
 
@@ -256,8 +286,13 @@ can move predictions a lot without improving accuracy. Where the two disagree, t
 accuracy and section 3 for what the model is doing.
 
 ## 4. Example explanations (2025 entrants, still in the queue)
-These are what the dashboard will show. Points are percentage points relative to the typical recent
-project.
+These are what the dashboard will show. Points are percentage points relative to the **model's
+average prediction for recent ({meta["background_years"][0]}–{meta["background_years"][1]}) entrants**.
+That baseline is shown next to the observed rate for the most recent cohort with full follow-up:
+
+{to_markdown(reference_table(meta))}
+
+> {meta["calibration_warning"]}
 
 ![Example explanation]({figs["local"]})
 

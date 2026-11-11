@@ -24,6 +24,7 @@ from queueiq.evaluation.backtest import (
     point_metrics,
     run_origin,
 )
+from queueiq.evaluation.data_checks import gap_bound, missing_withdrawal_dates_by_year
 from queueiq.evaluation.dev import (
     DEV_ORIGINS,
     ENTRIES_FILE,
@@ -299,12 +300,14 @@ def main(B: int = bs.B_DEFAULT) -> None:
     boot.to_csv(BOOT_FILE, index=False, float_format="%.6g")
 
     n_iso_year = len(set(zip(pooled_a.iso, pooled_a.entry_year, strict=True)))
-    write_outputs(sel, metrics, boot, results, primary, B, n_iso_year)
+    write_outputs(sel, metrics, boot, results, primary, B, n_iso_year, entries)
 
 
-def write_outputs(sel, metrics, boot, results, primary, B, n_iso_year) -> None:
+def write_outputs(sel, metrics, boot, results, primary, B, n_iso_year, entries) -> None:
     figs = make_figures(metrics, results, primary)
-    REPORT_FILE.write_text(build_report(sel, metrics, boot, results, primary, figs, B, n_iso_year))
+    report = build_report(sel, metrics, boot, results, primary, figs, B, n_iso_year)
+    report += data_gap_section(entries, metrics, primary)
+    REPORT_FILE.write_text(report)
     MODEL_CARD.write_text(build_model_card(sel, metrics, boot, results, primary))
     print(f"Wrote {REPORT_FILE.name} and {MODEL_CARD.name}")
 
@@ -321,7 +324,9 @@ def render_only(B: int = bs.B_DEFAULT) -> None:
     metrics, boot = pd.read_csv(METRICS_FILE), pd.read_csv(BOOT_FILE)
     pooled_a = pool([results[("A", y)] for y in DEV_ORIGINS], "A-pooled")
     n_iso_year = len(set(zip(pooled_a.iso, pooled_a.entry_year, strict=True)))
-    write_outputs(sel, metrics, boot, results, primary, B, n_iso_year)
+    write_outputs(
+        sel, metrics, boot, results, primary, B, n_iso_year, pd.read_parquet(ENTRIES_FILE)
+    )
 
 
 def make_figures(metrics, results, primary) -> dict[str, str]:
@@ -545,6 +550,46 @@ Block B (origins 2018–2020) was seen in Phase 4 and is reported only, never us
 Rows: {len(b_rows):,} metric rows in `reports/evaluation_metrics.csv`. Every point metric with its
 counts is in that file. Every bootstrap interval, including paired differences against the
 primary configuration (`*_minus_primary`), is in `reports/evaluation_bootstrap.csv`.
+"""
+
+
+def data_gap_section(entries, metrics, primary) -> str:
+    """Added after the final run (post-hoc data check; nothing is re-scored)."""
+    table = missing_withdrawal_dates_by_year(entries)
+    c = metrics[
+        (metrics["block"] == "C")
+        & (metrics["model"] == primary)
+        & (metrics["tau"] == TAU)
+        & (metrics["outcome"] == "withdrawn")
+    ].iloc[0]
+    b = gap_bound(table, C_TEST_YEARS, int(c["n"]), int(c["cases"]), float(c["mean_pred"]))
+    final_rows = table.loc[C_TEST_YEARS[0] : C_TEST_YEARS[1]]
+    return f"""
+
+## Data check: missing withdrawal dates and the final-test gap (added after the final run)
+A post-hoc data check, added after block C was run. It re-scores nothing.
+
+Withdrawn projects with no withdrawal date were excluded from model scope (rule
+`missing_event_date`). Each exclusion removes a withdrawal from its entry cohort and lowers the
+observed withdrawal rate. Withdrawn projects that pass every other scope rule, by entry year:
+
+{to_markdown(table, index=True)}
+
+For the final-test cohorts ({C_TEST_YEARS[0]}-{C_TEST_YEARS[1]}),
+{b["excluded_undated_withdrawals"]} undated withdrawals were excluded
+({", ".join(f"{y}: {r['missing_%']}%" for y, r in final_rows.iterrows())} of withdrawn projects).
+
+**Upper bound on the effect.** Suppose every one of them were put back into the test cohort and
+had withdrawn within 3 years. The observed 3-year withdrawal rate would rise from
+{pct(b["observed"])} to at most {pct(b["observed_upper_bound"])}, against {pct(b["predicted"])}
+predicted. That closes at most {100 * b["share_of_gap_explainable"]:.0f}% of the
+{b["gap_points"]:.1f}-point gap. **Missing dates can explain only a small part of the
+overprediction. Most of it is the model expecting more withdrawals than the 2021–22 entrants
+showed.**
+
+One measurement issue can't be checked from a single snapshot: withdrawals that happened but
+weren't yet recorded by the data date (status still "active"). That would also lower the observed
+rate for recent cohorts. Comparing with the next LBNL edition is the way to test it.
 """
 
 

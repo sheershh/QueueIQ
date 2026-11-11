@@ -227,3 +227,46 @@ Block B (origins 2018–2020) was seen in Phase 4 and is reported only, never us
 Rows: 228 metric rows in `reports/evaluation_metrics.csv`. Every point metric with its
 counts is in that file. Every bootstrap interval, including paired differences against the
 primary configuration (`*_minus_primary`), is in `reports/evaluation_bootstrap.csv`.
+
+
+## Data check: missing withdrawal dates and the final-test gap (added after the final run)
+A post-hoc data check, added after block C was run. It re-scores nothing.
+
+Withdrawn projects with no withdrawal date were excluded from model scope (rule
+`missing_event_date`). Each exclusion removes a withdrawal from its entry cohort and lowers the
+observed withdrawal rate. Withdrawn projects that pass every other scope rule, by entry year:
+
+| entry_year | withdrawn_projects | missing_withdrawal_date | missing_% |
+|---|---|---|---|
+| 2010 | 651 | 27 | 4.1 |
+| 2011 | 571 | 9 | 1.6 |
+| 2012 | 216 | 5 | 2.3 |
+| 2013 | 197 | 2 | 1.0 |
+| 2014 | 321 | 3 | 0.9 |
+| 2015 | 443 | 2 | 0.5 |
+| 2016 | 641 | 13 | 2.0 |
+| 2017 | 584 | 3 | 0.5 |
+| 2018 | 625 | 2 | 0.3 |
+| 2019 | 714 | 2 | 0.3 |
+| 2020 | 1077 | 29 | 2.7 |
+| 2021 | 1369 | 17 | 1.2 |
+| 2022 | 829 | 6 | 0.7 |
+| 2023 | 832 | 6 | 0.7 |
+| 2024 | 439 | 14 | 3.2 |
+| 2025 | 321 | 17 | 5.3 |
+
+For the final-test cohorts (2021-2022),
+23 undated withdrawals were excluded
+(2021: 1.2%, 2022: 0.7% of withdrawn projects).
+
+**Upper bound on the effect.** Suppose every one of them were put back into the test cohort and
+had withdrawn within 3 years. The observed 3-year withdrawal rate would rise from
+34.3% to at most 34.7%, against 51.6%
+predicted. That closes at most 3% of the
+17.3-point gap. **Missing dates can explain only a small part of the
+overprediction. Most of it is the model expecting more withdrawals than the 2021–22 entrants
+showed.**
+
+One measurement issue can't be checked from a single snapshot: withdrawals that happened but
+weren't yet recorded by the data date (status still "active"). That would also lower the observed
+rate for recent cohorts. Comparing with the next LBNL edition is the way to test it.

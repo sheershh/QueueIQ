@@ -488,3 +488,37 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
 - **Cox hazard ratios** are reported as an interpretable reference, with caveats: correlated features,
   ridge penalty, approximate proportional hazards, not causal. The clearest signal agrees with the forest:
   gas projects have 2.3× the hazard of reaching operation compared with the battery reference category.
+
+## Before Phase 7: changes requested after Phase 6 review (2026-11-11)
+
+### D-043: The explanation baseline is labelled as a model output, next to observed rates
+- The Shapley baseline is the **model's average prediction for 2021–2025 entrants** (64-project
+  background), and is now labelled exactly that way. The word "typical" is gone.
+- Every explanation (text, figure, report) also shows the observed rate for the most recent cohort with
+  full follow-up: **37.2%** withdrawn within 3 years (2022 entrants, n = 1,579) and **2.2%** operational
+  within 5 years (2020 entrants, n = 1,435).
+- It also shows the **Phase 5 calibration warning**. On the final test, the model predicted 51.6%
+  withdrawing within 3 years against 34.3% observed, and 4.6% reaching operation against 0.03% observed.
+- All three are computed from the data and `reports/evaluation_metrics.csv`, and stored in
+  `models/deploy_meta.json` for the dashboard.
+
+### D-044: Missing withdrawal dates explain at most 3% of the final-test withdrawal gap
+- **Reasoning:** withdrawn projects with no date were excluded from scope (D-011/D-012). Each exclusion
+  lowers its cohort's observed withdrawal rate.
+- **Size of the effect:** missing shares by entry year (model regions, 2010+) range from 0.3% to 5.3% of
+  withdrawn projects. For the final-test cohorts they are 1.2% (2021) and 0.7% (2022), which is 23
+  projects.
+- **Upper bound:** add all 23 back and assume each withdrew within 3 years. The observed rate rises from
+  34.3% to at most 34.7%, against 51.6% predicted. That closes at most 3% of the 17.3-point gap.
+- **Conclusion:** the overprediction is mainly the model, not this data gap.
+- **Not testable here:** withdrawals not yet recorded in the 2025 snapshot. The next LBNL edition would
+  show them.
+- The check was added to `reports/evaluation.md` through the render-only path. Checksums confirm no
+  metric, bootstrap or block C prediction file changed.
+
+### D-045: Model files stay local and are mounted
+- `models/` stays gitignored, because the deployment forest is about 90 MB compressed.
+- Phase 7 serves it by **mounting `models/` as a read-only volume** in Docker Compose.
+- Setup is `make data && make train && docker compose up`.
+- License: CC BY 4.0, re-checked today (see `docs/data_sources.md`). A hosted demo is allowed with
+  attribution, a license link and a note of changes. It is not proposed until the author decides.

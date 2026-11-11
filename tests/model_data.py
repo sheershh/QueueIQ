@@ -33,6 +33,10 @@ def synthetic(n: int = 600, seed: int = 0) -> tuple[pd.DataFrame, pd.DataFrame]:
             "fips_code": pd.array([f"0000{i}" for i in rng.integers(1, 6, n)], dtype="string"),
         }
     )
+    entries["queue_year"] = entries["queue_date"].dt.year
+    entries["status"] = entries["outcome"].replace({"censored": "active"})
+    entries["withdrawal_date"] = entries["end_date"].where(entries["outcome"] == "withdrawn")
+    entries["scope_exclusion_reason"] = pd.array([None] * n, dtype="string")
     features = pd.DataFrame({"project_id": entries["project_id"]})
     for col in MODEL_FEATURES:
         features[col] = rng.uniform(0, 50, n)

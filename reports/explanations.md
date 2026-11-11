@@ -2,7 +2,7 @@
 
 Model explained: the **primary configuration** `rsf_cause_specific|qy=0|recal=0` frozen in Phase 5, refit on all
 in-scope data as the **deployment model** (14,796 projects, outcomes as of
-2025-12-31; fit in 15.0 s). Decisions D-039 to D-042.
+2025-12-31; fit in 21.4 s). Decisions D-039 to D-042.
 
 Explanations describe **what the model relies on**, not what causes withdrawal or completion.
 
@@ -52,7 +52,8 @@ entrants), where operational AUC is not estimable (1 case). Report only.
 ## 3. What moves individual predictions (deployment model, mean |Shapley|)
 Exact grouped Shapley values (all 128 group combinations) for 100 randomly chosen 2025
 entrants. The comparison point is the average prediction over 64 random
-2021–2025 entrants (a "typical recent project").
+2021–2025 entrants: the **model's average prediction for recent entrants**.
+This is a model output, not an observed rate. See section 4 for observed rates.
 Values are the mean absolute contribution in percentage points. For every explained project, the
 contributions add up to the prediction minus the baseline, with a largest gap of 5.6e-17.
 
@@ -72,15 +73,23 @@ can move predictions a lot without improving accuracy. Where the two disagree, t
 accuracy and section 3 for what the model is doing.
 
 ## 4. Example explanations (2025 entrants, still in the queue)
-These are what the dashboard will show. Points are percentage points relative to the typical recent
-project.
+These are what the dashboard will show. Points are percentage points relative to the **model's
+average prediction for recent (2021–2025) entrants**.
+That baseline is shown next to the observed rate for the most recent cohort with full follow-up:
+
+| headline number | observed for latest fully followed cohort |
+|---|---|
+| Chance of withdrawing within 3 years | 37.2% (2022 entrants, n = 1,579) |
+| Chance of reaching operation within 5 years | 2.2% (2020 entrants, n = 1,435) |
+
+> Caution: these probabilities run high. On the Phase 5 final test (2021-22 entrants, n = 3,299) the model predicted 51.6% withdrawing within 3 years against 34.3% observed, and 4.6% reaching operation within 3 years against 0.03% observed (1 project). Use the numbers to compare projects with each other, not as literal odds.
 
 ![Example explanation](figures/fig10_example_explanation.png)
 
 ### highest withdrawal risk: `MISO::J4104`
 
-- Chance of withdrawing within 3 years: 81.1% (typical recent project: 50.8%). Pushing it up: state congestion (+20.2 points: 2158 earlier requests in the state in 5 years, 14% already withdrawn); state momentum (+3.7 points: 482 requests in the state in the past year); state (+2.9 points: TX).
-- Chance of reaching operation within 5 years: 0.9% (typical recent project: 3.5%). Pulling it down: technology (-0.8 points: battery); state congestion (-0.7 points: 2158 earlier requests in the state in 5 years, 14% already withdrawn).
+- Chance of withdrawing within 3 years: 81.1%. Model's average prediction for recent entrants: 50.8%; observed for 2022 entrants (latest with full 3-year follow-up): 37.2%. Pushing it up: state congestion (+20.2 points: 2158 earlier requests in the state in 5 years, 14% already withdrawn); state momentum (+3.7 points: 482 requests in the state in the past year); state (+2.9 points: TX).
+- Chance of reaching operation within 5 years: 0.9%. Model's average prediction for recent entrants: 3.5%; observed for 2020 entrants (latest with full 5-year follow-up): 2.2%. Pulling it down: technology (-0.8 points: battery); state congestion (-0.7 points: 2158 earlier requests in the state in 5 years, 14% already withdrawn).
 
 | group | Chance of withdrawing within 3 years (points) | Chance of reaching operation within 5 years (points) |
 |---|---|---|
@@ -94,8 +103,8 @@ project.
 
 ### median: `SPP::GEN-2024-275`
 
-- Chance of withdrawing within 3 years: 54.8% (typical recent project: 50.8%). Pushing it up: state congestion (+1.6 points: 168 earlier requests in the state in 5 years, 21% already withdrawn); grid operator (+1.2 points: SPP); state (+0.9 points: MO).
-- Chance of reaching operation within 5 years: 1.0% (typical recent project: 3.5%). Pulling it down: state congestion (-0.9 points: 168 earlier requests in the state in 5 years, 21% already withdrawn); size (-0.6 points: 150 MW).
+- Chance of withdrawing within 3 years: 54.8%. Model's average prediction for recent entrants: 50.8%; observed for 2022 entrants (latest with full 3-year follow-up): 37.2%. Pushing it up: state congestion (+1.6 points: 168 earlier requests in the state in 5 years, 21% already withdrawn); grid operator (+1.2 points: SPP); state (+0.9 points: MO).
+- Chance of reaching operation within 5 years: 1.0%. Model's average prediction for recent entrants: 3.5%; observed for 2020 entrants (latest with full 5-year follow-up): 2.2%. Pulling it down: state congestion (-0.9 points: 168 earlier requests in the state in 5 years, 21% already withdrawn); size (-0.6 points: 150 MW).
 
 | group | Chance of withdrawing within 3 years (points) | Chance of reaching operation within 5 years (points) |
 |---|---|---|
@@ -109,8 +118,8 @@ project.
 
 ### lowest withdrawal risk: `PJM::AG2-675`
 
-- Chance of withdrawing within 3 years: 24.2% (typical recent project: 50.8%). Pulling it down: state (-7.7 points: IL); state momentum (-6.7 points: 149 requests in the state in the past year); state congestion (-5.1 points: 537 earlier requests in the state in 5 years, 21% already withdrawn).
-- Chance of reaching operation within 5 years: 1.9% (typical recent project: 3.5%). Pushing it up: state (+0.6 points: IL). Pulling it down: state congestion (-1.0 points: 537 earlier requests in the state in 5 years, 21% already withdrawn); technology (-0.5 points: battery).
+- Chance of withdrawing within 3 years: 24.2%. Model's average prediction for recent entrants: 50.8%; observed for 2022 entrants (latest with full 3-year follow-up): 37.2%. Pulling it down: state (-7.7 points: IL); state momentum (-6.7 points: 149 requests in the state in the past year); state congestion (-5.1 points: 537 earlier requests in the state in 5 years, 21% already withdrawn).
+- Chance of reaching operation within 5 years: 1.9%. Model's average prediction for recent entrants: 3.5%; observed for 2020 entrants (latest with full 5-year follow-up): 2.2%. Pushing it up: state (+0.6 points: IL). Pulling it down: state congestion (-1.0 points: 537 earlier requests in the state in 5 years, 21% already withdrawn); technology (-0.5 points: battery).
 
 | group | Chance of withdrawing within 3 years (points) | Chance of reaching operation within 5 years (points) |
 |---|---|---|

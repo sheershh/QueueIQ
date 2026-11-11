@@ -7,18 +7,27 @@ from queueiq.explain.groups import TARGETS, describe
 MIN_POINTS = 0.5  # contributions smaller than half a percentage point are not mentioned
 
 
-def narrative(table: pd.DataFrame, row: pd.Series, top: int = 3) -> dict[str, str]:
+def narrative(table: pd.DataFrame, row: pd.Series, reference: dict, top: int = 3) -> dict[str, str]:
     """One sentence block per target, e.g.
-    'Chance of withdrawing within 3 years: 48% (typical recent project: 42%).
-     Pushing it up: county congestion (+5.1 points: 23 earlier requests ...).'"""
+    'Chance of withdrawing within 3 years: 81.1%. Model's average prediction for recent entrants:
+     50.8%; observed for 2022 entrants (latest with full follow-up): 37.2%. Pushing it up: ...'
+
+    reference[target] = {"cohort": year, "observed": share} (see explain/reference.py).
+    """
     texts = {}
-    for target, (_, _, label) in TARGETS.items():
+    for target, (_, h, label) in TARGETS.items():
         p, base = table.attrs["prediction"][target], table.attrs["baseline"][target]
+        ref = reference[target]
         contrib = (table[target] * 100).sort_values(key=abs, ascending=False)
         contrib = contrib[contrib.abs() >= MIN_POINTS].head(top)
         up = [f"{g} ({v:+.1f} points: {describe(g, row)})" for g, v in contrib.items() if v > 0]
         down = [f"{g} ({v:+.1f} points: {describe(g, row)})" for g, v in contrib.items() if v < 0]
-        parts = [f"{label}: {100 * p:.1f}% (typical recent project: {100 * base:.1f}%)."]
+        parts = [
+            f"{label}: {100 * p:.1f}%.",
+            f"Model's average prediction for recent entrants: {100 * base:.1f}%; observed for "
+            f"{ref['cohort']} entrants (latest with full {h // 12}-year follow-up): "
+            f"{100 * ref['observed']:.1f}%.",
+        ]
         if up:
             parts.append("Pushing it up: " + "; ".join(up) + ".")
         if down:

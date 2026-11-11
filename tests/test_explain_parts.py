@@ -63,7 +63,13 @@ def test_describe_each_group():
     assert "25% already withdrawn" in describe("state congestion", r)
 
 
-def test_narrative_mentions_big_movers_in_the_right_direction():
+REF = {
+    "withdrawn_3y": {"cohort": 2022, "observed": 0.372, "n": 1579},
+    "operational_5y": {"cohort": 2020, "observed": 0.022, "n": 1435},
+}
+
+
+def test_narrative_labels_the_baseline_and_shows_the_observed_reference():
     table = pd.DataFrame(
         {"withdrawn_3y": [0.10, -0.03, 0.001], "operational_5y": [0.0, 0.0, 0.0]},
         index=["state congestion", "size", "technology"],
@@ -71,13 +77,37 @@ def test_narrative_mentions_big_movers_in_the_right_direction():
     table = table.reindex(list(GROUPS)).fillna(0.0)
     table.attrs["prediction"] = {"withdrawn_3y": 0.62, "operational_5y": 0.03}
     table.attrs["baseline"] = {"withdrawn_3y": 0.55, "operational_5y": 0.03}
-    text = narrative(table, row())
+    text = narrative(table, row(), REF)
     w = text["withdrawn_3y"]
-    assert w.startswith(TARGETS["withdrawn_3y"][2] + ": 62.0% (typical recent project: 55.0%)")
+    assert w.startswith(TARGETS["withdrawn_3y"][2] + ": 62.0%.")
+    assert "Model's average prediction for recent entrants: 55.0%" in w
+    assert "observed for 2022 entrants (latest with full 3-year follow-up): 37.2%" in w
+    assert "typical" not in w
     assert "Pushing it up: state congestion (+10.0 points" in w
     assert "Pulling it down: size (-3.0 points: 150 MW)" in w
     assert "technology" not in w  # 0.1 points is below the reporting threshold
     assert "No feature group moves it" in text["operational_5y"]
+
+
+def test_calibration_warning_states_both_gaps():
+    from queueiq.explain.reference import calibration_warning
+
+    cal = {
+        "withdrawn": {"predicted": 0.516, "observed": 0.343, "cases": 1131, "n": 3299},
+        "operational": {"predicted": 0.046, "observed": 0.0003, "cases": 1, "n": 3299},
+    }
+    w = calibration_warning(cal)
+    assert "51.6%" in w and "34.3%" in w and "4.6%" in w and "0.03%" in w and "n = 3,299" in w
+
+
+def test_observed_reference_uses_latest_fully_followed_cohort():
+    from queueiq.explain.reference import observed_reference
+
+    entries, _ = synthetic(n=600, seed=9)
+    entries["queue_year"] = entries["queue_date"].dt.year
+    ref = observed_reference(entries, pd.Timestamp("2025-12-31"))
+    assert ref["withdrawn_3y"]["cohort"] == entries["queue_year"].max()  # synthetic ends 2020
+    assert 0 <= ref["operational_5y"]["observed"] <= 1
 
 
 def test_primary_model_mapping():

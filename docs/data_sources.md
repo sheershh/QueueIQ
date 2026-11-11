@@ -47,3 +47,25 @@ file is missing or different, it stops and explains how to get it. See decisions
   that writes to `data/interim/` and `data/processed/`.
 - Neither raw nor processed data is committed to git. The generated data-quality report and cleaning
   waterfall are committed, because they are small summaries.
+
+### License re-check for a possible hosted demo (2026-11-11)
+- **Landing page:** emp.lbl.gov/queues still states "The Queued Up data file is licensed CC BY 4.0. You may
+  use, share, or adapt the dataset as long as you attribute it to Lawrence Berkeley National Laboratory and
+  GridTracker". It links to the Creative Commons BY 4.0 deed.
+- **Copyright line:** "Queued Up Data File. Copyright (c) 2026, The Regents of the University of California,
+  through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S.
+  Dept. of Energy) & GridTracker. CC BY 4.0." The same line also says "All rights reserved". We read the
+  explicit CC BY 4.0 grant as governing, but the wording is mixed.
+- **Download form:** the form shown before download is an email-list sign-up (name, email, company, job
+  title, topic lists). Its only consent text is about receiving marketing emails (via Constant Contact).
+  It shows no separate data-use terms.
+- **What CC BY 4.0 allows for a hosted demo:** sharing and adapting, including derived statistics and
+  trained models, provided we:
+  1. credit LBNL and GridTracker;
+  2. link to the license;
+  3. say that changes were made (filtered, cleaned, modelled);
+  4. don't imply endorsement.
+
+  Our choice not to commit the raw file stays (reproducibility via checksum; D-008). This is a reading of
+  the public license, not legal advice. Before any public deployment, the author should confirm with LBNL
+  if in doubt, especially about the "subject to DOE approvals" and "All rights reserved" wording.

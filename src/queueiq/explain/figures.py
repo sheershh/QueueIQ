@@ -1,5 +1,7 @@
 """Phase 6 figures: grouped permutation importance and one local explanation."""
 
+import textwrap
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -56,8 +58,9 @@ def permutation_importance(table: pd.DataFrame) -> plt.Figure:
     return fig
 
 
-def local_explanation(table: pd.DataFrame, title: str) -> plt.Figure:
-    """Contribution of each group (percentage points) for both headline numbers."""
+def local_explanation(table: pd.DataFrame, title: str, reference: dict, warning: str) -> plt.Figure:
+    """Contribution of each group (percentage points) relative to the model's average prediction
+    for recent entrants, with the observed reference rate and the calibration warning."""
     apply_matplotlib_style()
     fig, axes = plt.subplots(1, 2, figsize=(10, 4.2), sharey=True)
     groups = list(table.index)
@@ -79,12 +82,20 @@ def local_explanation(table: pd.DataFrame, title: str) -> plt.Figure:
             )
         ax.axvline(0, color=AXIS, linewidth=1)
         p, b = table.attrs["prediction"][target] * 100, table.attrs["baseline"][target] * 100
-        ax.set_title(f"{label}\n{p:.1f}% vs typical {b:.1f}%", fontsize=10)
+        ref = reference[target]
+        ax.set_title(
+            f"{label}: {p:.1f}%\nmodel average for recent entrants {b:.1f}% | "
+            f"observed {ref['cohort']} entrants {100 * ref['observed']:.1f}%",
+            fontsize=9,
+        )
         ax.set_yticks(y, groups)
         ax.set_xlabel("Contribution (percentage points)")
         ax.grid(axis="y", visible=False)
         lim = max(abs(v).max() * 1.35, 1)
         ax.set_xlim(-lim, lim)
     fig.suptitle(title, x=0.01, ha="left", fontsize=12)
-    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    fig.text(
+        0.01, 0.01, textwrap.fill(warning, 170), ha="left", va="bottom", fontsize=9, color=TEXT
+    )
+    fig.tight_layout(rect=(0, 0.1, 1, 0.92))
     return fig
