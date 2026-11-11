@@ -144,3 +144,49 @@ Each entry: what was decided, why, and the alternatives that were considered.
   (the first rule a row fails) record the scope. `reports/cleaning_waterfall.csv` lists the row count after
   each rule. The build asserts that the processed dataset has as many rows as the raw sheet.
 - **Why:** Every exclusion can be audited and reversed, and Phase 2 can still describe all regions.
+
+## Phase 2: Exploratory analysis (2026-11-11)
+
+### D-018: Our own Aalen-Johansen estimator
+- **Decision:** `src/queueiq/eda/survival.py` implements Kaplan-Meier (share still in the queue) and
+  Aalen-Johansen (cumulative share reaching each outcome) directly in about 30 lines. It is tested against a
+  hand-worked example and against simple proportions when there is no censoring.
+- **Why:** The estimator is the backbone of the EDA and of the Phase 4 baseline, so it has to be fully
+  understood and explainable. Tied event times are handled exactly, with no random jitter. lifelines'
+  `AalenJohansenFitter` adds random jitter to ties by default.
+- **Alternatives:** lifelines or scikit-survival. These come in Phase 4 for Cox and random survival
+  forests, where reimplementing would add nothing.
+- **Limit:** No confidence bands in the EDA. Bootstrap intervals come in Phase 5 alongside the model metrics.
+
+### D-019: Report an estimate only when at least 30 projects are still observed
+- **Decision:** Curves stop, and 3- and 5-year estimates are left blank, once fewer than 30 projects in
+  that group are still being observed (`MIN_AT_RISK = 30`).
+- **Why:** The tail of a survival curve rests on the few projects observed that long, so it swings wildly.
+  This is the EDA version of the evaluation horizon cap used in Phase 5.
+- **Alternatives:** A fixed horizon cap per cohort (used for evaluation in Phase 5), or showing the full
+  tail with confidence bands (planned for Phase 5).
+
+### D-020: Raw shares and censoring-aware estimates are always labelled
+- **Decision:** Raw status shares ("% withdrawn as of 2025") are always labelled "raw" and are never used
+  as estimates of outcome probability. Median time to an event is shown only "among projects that had that
+  event", with a warning that it is biased short.
+- **Why:** These are the two classic mistakes with censored data. Keeping them visibly separate in the
+  report is the point of this phase.
+
+### D-021: One visual system, an `eda` subpackage, and committed figures
+- **Decision:** `src/queueiq/style.py` fixes the palette for every chart:
+  - operational = `#2a78d6` (blue) and withdrawn = `#eb6834` (orange). This pair passes a palette check for
+    color-blind separation and contrast.
+  - still in queue = neutral gray, and non-outcome series = a darker neutral, so blue and orange keep
+    their meaning.
+  - groups are shown as small multiples (one small panel per group) rather than extra colors.
+  The EDA logic lives in a new `src/queueiq/eda/` subpackage. The figures (about 350 KB in total) are
+  committed so the report renders on GitHub.
+- **Why:** The same outcome is the same color everywhere, including the Phase 7 dashboard. Code in `src/`
+  is testable, whereas notebooks are for exploring only.
+
+### Cross-check result
+Recomputed on all regions, our numbers match LBNL's published headline figures: capacity requesting
+interconnection 2000–2020 is 12.8% operational, 75.2% withdrawn, and 10.6% active, against LBNL's
+13% / 75% / 10%. The median time from request to operation for projects online in 2025 is 5.07 years,
+against LBNL's "over 5 years". The full table is in `reports/eda.md`.

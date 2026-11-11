@@ -4,7 +4,7 @@ Survival and competing-risks models that estimate whether a proposed US energy p
 interconnection queue reaches commercial operation or withdraws, and how long that takes.
 Data: Lawrence Berkeley National Laboratory "Queued Up" dataset.
 
-**Status:** Phase 1 (data ingestion) complete. No models or results yet.
+**Status:** Phase 2 (exploratory analysis) complete. No models yet.
 
 ## Roadmap
 0. Setup: environment, lint, tests, CI
@@ -26,6 +26,7 @@ make setup   # install pinned dependencies + git hooks
 make test    # run tests
 make lint    # lint and format checks
 make data    # verify the raw LBNL file and build the processed dataset
+make eda     # exploratory analysis: reports/eda.md + figures
 make help    # list all targets
 ```
 
@@ -44,4 +45,5 @@ Lawrence Berkeley National Laboratory & GridTracker. CC BY 4.0.*
 - [docs/data_sources.md](docs/data_sources.md): data provenance, license, checksum
 - [docs/data_dictionary.md](docs/data_dictionary.md): column definitions and which are safe as features
 - [reports/data_quality.md](reports/data_quality.md): generated data-quality report and cleaning waterfall
+- [reports/eda.md](reports/eda.md): exploratory analysis (censoring-aware outcome curves, cohorts, cross-check with LBNL)
 - [docs/model_card.md](docs/model_card.md): model documentation (TBD, Phase 5)

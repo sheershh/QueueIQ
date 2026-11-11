@@ -1,5 +1,5 @@
 # Every pipeline step is a make target. Later phases add: data, features, train, evaluate, app.
-.PHONY: help setup data lint format test check clean
+.PHONY: help setup data eda lint format test check clean
 
 UV ?= uv
 
@@ -13,6 +13,9 @@ setup:  ## Install pinned dependencies from uv.lock and the git pre-commit hooks
 
 data:  ## Verify the raw LBNL file and build data/processed/queue_entries.parquet + reports/data_quality.md
 	$(UV) run python -m queueiq.ingestion.build
+
+eda:  ## Exploratory analysis: reports/eda.md + reports/figures/ (needs make data first)
+	$(UV) run python -m queueiq.eda.build
 
 lint:  ## Check lint and formatting (no changes made)
 	$(UV) run ruff check .
