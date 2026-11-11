@@ -51,6 +51,11 @@ def test_dev_then_final_end_to_end(env):
     assert "## Limitations and failure cases" in card
     assert len(list((env / "figures").glob("*.png"))) == 2
 
+    # Re-rendering reads saved results only: metric and bootstrap files must not change.
+    before = {f: (env / f).read_bytes() for f in ("metrics.csv", "boot.csv")}
+    final.render_only(B=30)
+    assert all((env / f).read_bytes() == b for f, b in before.items())
+
 
 def test_final_refuses_if_protocol_changed(env):
     dev.main()

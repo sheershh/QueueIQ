@@ -1,5 +1,5 @@
 # Every pipeline step is a make target. Later phases add: data, features, train, evaluate, app.
-.PHONY: help setup data eda features train evaluate-dev evaluate lint format test check clean
+.PHONY: help setup data eda features train evaluate-dev evaluate evaluate-render lint format test check clean
 
 UV ?= uv
 
@@ -28,6 +28,9 @@ evaluate-dev:  ## Phase 5 block A (development) + frozen model selection (protoc
 
 evaluate:  ## Phase 5 blocks B + C (report only) using the frozen selection; evaluation report + model card
 	$(UV) run python -m queueiq.evaluation.final
+
+evaluate-render:  ## Rebuild evaluation report/figures/model card from saved results (no refit, no re-scoring)
+	$(UV) run python -m queueiq.evaluation.final --render-only
 
 lint:  ## Check lint and formatting (no changes made)
 	$(UV) run ruff check .

@@ -4,7 +4,7 @@ Survival and competing-risks models that estimate whether a proposed US energy p
 interconnection queue reaches commercial operation or withdraws, and how long that takes.
 Data: Lawrence Berkeley National Laboratory "Queued Up" dataset.
 
-**Status:** Phase 4 (survival and competing-risks models) complete. Rigorous evaluation (Phase 5) next.
+**Status:** Phase 5 (pre-registered evaluation) complete. Explainability (Phase 6) next.
 
 ## Roadmap
 0. Setup: environment, lint, tests, CI
@@ -30,6 +30,8 @@ make data    # verify the raw LBNL file and build the processed dataset
 make eda     # exploratory analysis: reports/eda.md + figures
 make features  # leakage-safe feature table + reports/features.md
 make train   # fit all models on the time split + reports/model_comparison.md
+make evaluate-dev  # Phase 5 development backtest + frozen model selection
+make evaluate      # Phase 5 extension + final test (run once) + evaluation report + model card
 make help    # list all targets
 ```
 
@@ -51,4 +53,6 @@ Lawrence Berkeley National Laboratory & GridTracker. CC BY 4.0.*
 - [reports/eda.md](reports/eda.md): exploratory analysis (censoring-aware outcome curves, cohorts, cross-check with LBNL)
 - [reports/features.md](reports/features.md): feature definitions, coverage, and known gaps
 - [reports/model_comparison.md](reports/model_comparison.md): all models on one time-based split, with transfer diagnostics
-- [docs/model_card.md](docs/model_card.md): model documentation (TBD, Phase 5)
+- [docs/evaluation_protocol.md](docs/evaluation_protocol.md): pre-registered evaluation protocol (tag `eval-protocol-v1`)
+- [reports/evaluation.md](reports/evaluation.md): rolling-origin backtest, final test, bootstrap intervals, calibration
+- [docs/model_card.md](docs/model_card.md): intended use, performance, limitations

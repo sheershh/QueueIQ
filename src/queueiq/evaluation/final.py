@@ -51,6 +51,12 @@ MODEL_CARD = config.PROJECT_ROOT / "docs" / "model_card.md"
 TAU = 36
 
 
+def pct(x: float) -> str:
+    """Percent with enough precision that a tiny rate (1 in 3,299) doesn't print as 0.0%."""
+    v = 100 * x
+    return f"{v:.2f}%" if v < 1 else f"{v:.1f}%"
+
+
 def load_selection() -> dict:
     if not SELECTION_FILE.exists():
         raise RuntimeError("No frozen selection: run `make evaluate-dev` and commit it first.")
@@ -226,7 +232,7 @@ def block_table(metrics, boot, block, outcome, names, primary, units) -> pd.Data
                 "C-index": cidx,
                 "skill [CI by unit]": f"{r['skill']:.3f} {ci_text(boot, block, name, outcome, 'skill', units)}",
                 "Brier@3y": f"{r['brier_tau']:.4f}",
-                "predicted vs observed %": f"{100 * r['mean_pred']:.1f} vs {100 * r['observed']:.1f}",
+                "predicted vs observed": f"{pct(r['mean_pred'])} vs {pct(r['observed'])}",
                 "ECE": f"{r['ece']:.3f}",
             }
         )
@@ -292,11 +298,30 @@ def main(B: int = bs.B_DEFAULT) -> None:
     )
     boot.to_csv(BOOT_FILE, index=False, float_format="%.6g")
 
-    figs = make_figures(metrics, results, primary)
     n_iso_year = len(set(zip(pooled_a.iso, pooled_a.entry_year, strict=True)))
+    write_outputs(sel, metrics, boot, results, primary, B, n_iso_year)
+
+
+def write_outputs(sel, metrics, boot, results, primary, B, n_iso_year) -> None:
+    figs = make_figures(metrics, results, primary)
     REPORT_FILE.write_text(build_report(sel, metrics, boot, results, primary, figs, B, n_iso_year))
     MODEL_CARD.write_text(build_model_card(sel, metrics, boot, results, primary))
     print(f"Wrote {REPORT_FILE.name} and {MODEL_CARD.name}")
+
+
+def render_only(B: int = bs.B_DEFAULT) -> None:
+    """Rebuild the report, figures and model card from SAVED results. Nothing is refit or
+    re-scored: it reads the stored predictions and the metric/bootstrap CSVs from the single
+    final run, so presentation fixes never mean touching block C again."""
+    sel = load_selection()
+    primary = sel["primary_configuration"]
+    results = {("A", y): joblib.load(EVAL_DIR / f"A_{y}.joblib") for y in DEV_ORIGINS}
+    results |= {("B", y): joblib.load(EVAL_DIR / f"B_{y}.joblib") for y in B_ORIGINS}
+    results[("C", C_ORIGIN)] = joblib.load(EVAL_DIR / f"C_{C_ORIGIN}.joblib")
+    metrics, boot = pd.read_csv(METRICS_FILE), pd.read_csv(BOOT_FILE)
+    pooled_a = pool([results[("A", y)] for y in DEV_ORIGINS], "A-pooled")
+    n_iso_year = len(set(zip(pooled_a.iso, pooled_a.entry_year, strict=True)))
+    write_outputs(sel, metrics, boot, results, primary, B, n_iso_year)
 
 
 def make_figures(metrics, results, primary) -> dict[str, str]:
@@ -334,6 +359,31 @@ def save(fig, name: str) -> str:
     return f"figures/{name}"
 
 
+def ablation_table(metrics) -> pd.DataFrame:
+    """Each family with all features vs without congestion features (queue_year in, no
+    recalibration in both), at 3 years. Report only (protocol section 2)."""
+    m = metrics[(metrics["tau"] == TAU) & metrics["block"].isin(["A-pooled", "C"])]
+    rows = []
+    for fam in ("cox_cause_specific", "lgbm_discrete_time", "rsf_cause_specific"):
+        for block in ("A-pooled", "C"):
+            for k in ("withdrawn", "operational"):
+                g = m[(m["block"] == block) & (m["outcome"] == k)].set_index("model")
+                full, noc = g.loc[f"{fam}|qy=1|recal=0"], g.loc[f"{fam}|no_congestion"]
+                rows.append(
+                    {
+                        "family": fam,
+                        "block": block,
+                        "outcome": k,
+                        "cases": int(full["cases"]),
+                        "skill with": round(full["skill"], 3),
+                        "skill without": round(noc["skill"], 3),
+                        "AUC with": round(full["auc"], 3),
+                        "AUC without": round(noc["auc"], 3),
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
 def ordered_names(primary: str) -> list[str]:
     rest = [n for n in candidate_names() if n != primary]
     return [primary, *rest, *ablation_names()]
@@ -343,7 +393,9 @@ def spread(metrics, primary) -> pd.DataFrame:
     m = metrics[
         (metrics["model"] == primary) & (metrics["tau"] == TAU) & metrics["block"].isin(["A", "B"])
     ]
-    return m.groupby("outcome")[["auc", "skill"]].agg(["mean", "std", "min", "max"]).round(3)
+    t = m.groupby("outcome")[["auc", "skill"]].agg(["mean", "std", "min", "max"]).round(3)
+    t.columns = [f"{metric} {stat}" for metric, stat in t.columns]
+    return t
 
 
 def unit_width_ratio(boot) -> pd.DataFrame:
@@ -358,16 +410,17 @@ def unit_width_ratio(boot) -> pd.DataFrame:
 
 
 def better_than_primary(metrics, primary, block) -> list[str]:
+    """Rows whose skill beats the primary configuration on `block`, per outcome."""
     m = metrics[(metrics["block"] == block) & (metrics["tau"] == TAU)]
-    p = m[m["model"] == primary].set_index("outcome")["skill"]
     notes = []
-    for name in ordered_names(primary)[1:]:
-        r = m[m["model"] == name].set_index("outcome")["skill"]
-        if r.empty:
-            continue
-        mean_r, mean_p = r.mean(), p.mean()
-        if mean_r > mean_p:
-            notes.append(f"`{name}` (mean skill {mean_r:.3f} vs primary {mean_p:.3f})")
+    for outcome in ("withdrawn", "operational"):
+        mo = m[m["outcome"] == outcome].set_index("model")["skill"]
+        p = mo.get(primary)
+        winners = [
+            f"`{n}` ({mo[n]:.3f})" for n in ordered_names(primary)[1:] if n in mo and mo[n] > p
+        ]
+        if winners:
+            notes.append(f"{outcome} (primary {p:.3f}): " + ", ".join(winners))
     return notes
 
 
@@ -431,7 +484,7 @@ Only {int(event_by(final.time, final.event, 1, TAU).sum())} test project(s) reac
 
 {to_markdown(block_table(metrics, boot, "C", "operational", names, primary, c_units))}
 
-{"**Sensitivity rows that beat the primary configuration on block C** (they do not replace it, protocol section 8): " + "; ".join(better) + "." if better else "No sensitivity row beat the primary configuration on block C."}
+{"**Rows whose block C skill beats the primary configuration** (they do not replace it, protocol section 8):" + "".join(chr(10) + "- " + b for b in better) if better else "No row beat the primary configuration on block C."}
 
 ![Calibration on the final test]({figs["calibration"]})
 
@@ -469,6 +522,12 @@ Spread of the primary configuration across the seven origins in blocks A and B (
 era-to-era uncertainty):
 
 {to_markdown(spread(metrics, primary), index=True)}
+
+## Congestion features: ablation (report only)
+Each family with all features vs without the congestion features (`queue_year` kept and no
+recalibration in both). AUC is blank where there are fewer than {MIN_CASES} cases.
+
+{to_markdown(ablation_table(metrics))}
 
 ## Bootstrap units
 Median width of grouped intervals relative to project intervals (1.0 = same width):
@@ -529,8 +588,8 @@ def build_model_card(sel, metrics, boot, results, primary) -> str:
             ],
             [
                 "Withdrawn: predicted vs observed",
-                f"{100 * wd['mean_pred']:.1f}% vs {100 * wd['observed']:.1f}%",
-                f"{100 * awd['mean_pred']:.1f}% vs {100 * awd['observed']:.1f}%",
+                f"{pct(wd['mean_pred'])} vs {pct(wd['observed'])}",
+                f"{pct(awd['mean_pred'])} vs {pct(awd['observed'])}",
             ],
             [
                 "Operational: cases / n",
@@ -549,8 +608,8 @@ def build_model_card(sel, metrics, boot, results, primary) -> str:
             ],
             [
                 "Operational: predicted vs observed",
-                f"{100 * op['mean_pred']:.1f}% vs {100 * op['observed']:.1f}%",
-                f"{100 * aop['mean_pred']:.1f}% vs {100 * aop['observed']:.1f}%",
+                f"{pct(op['mean_pred'])} vs {pct(op['observed'])}",
+                f"{pct(aop['mean_pred'])} vs {pct(aop['observed'])}",
             ],
         ],
         columns=[
@@ -619,4 +678,6 @@ The final test has {len(final.ids):,} projects.
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    render_only() if "--render-only" in sys.argv else main()

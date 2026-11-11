@@ -45,6 +45,9 @@ def rolling_origin(metrics: pd.DataFrame, lines: dict[str, tuple[str, str, str]]
                 )
             ref = 0.5 if metric == "auc" else 0.0
             ax.axhline(ref, color=AXIS, linewidth=1)
+            if row == 0:  # headroom so the block labels never sit on a data point
+                lo, hi = ax.get_ylim()
+                ax.set_ylim(lo, hi + 0.18 * (hi - lo))
             ax.axvspan(2013.5, 2017.5, color=GRID, alpha=0.35, linewidth=0)
             ax.axvspan(2020.5, 2021.5, color=GRID, alpha=0.6, linewidth=0)
             if row == 0:

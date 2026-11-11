@@ -365,3 +365,77 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
   eras and the models can't see that from the features.
 - **Next:** Phase 5 measures how stable this is across many origins (rolling-origin backtest), with
   confidence intervals and the planned ablations, including with and without `queue_year`.
+
+## Phase 5: Evaluation and rigor (2026-11-11)
+
+### D-033: A pre-registered protocol and an audit trail in git
+- **Decision:** All Phase 5 choices are defined in `docs/evaluation_protocol.md`: the blocks, the exact
+  selection score, the tie rule, the metrics, the bootstrap units, the recalibration method, and what the
+  final test must report. It was committed and tagged **before any result was computed**.
+- **Audit trail (git order):**
+  1. protocol `9e141b7` (tag `eval-protocol-v1`);
+  2. block A plus the frozen selection, `7cca0db`;
+  3. final-run code before it was run, `ce12185`;
+  4. block B and C results (the next commit).
+- **Why:** The 2018–2020 cohorts had already been seen in Phase 4, so they could no longer be an untouched
+  test. Decisions use only cohorts 2014–2017 (information known by 2021-01-01). The final test (2021–22
+  entrants) was scored once.
+- **Re-runs:** none. Presentation fixes after the final run were made with `make evaluate-render`, which
+  rebuilds the report from saved predictions and metric files without refitting or re-scoring (D-038).
+
+### D-034: Metric implementation
+- AUC (cumulative/dynamic) and the truncated competing-risks C-index (Wolbers) use one pair-counting class
+  with optional bootstrap weights. They are tested against a hand-worked example, a brute-force pair count
+  with ties, and scikit-learn's AUC. IBS and skill are computed per project, so bootstrap resamples cost a
+  matrix product.
+- All evaluation cohorts have full follow-up to the horizon (asserted in code). The
+  inverse-probability-of-censoring weights the metrics normally need are therefore exactly 1, and are not
+  applied.
+
+### D-035: Bootstrap units: what we learned
+- With 1,000 resamples of fixed predictions, county × entry-year intervals were a median **1.23× (block A)
+  and 1.27× (block C)** wider than project intervals. ISO × entry-year intervals were 3.0× wider, but rest
+  on only 16 groups (unreliable).
+- **Reading:** outcomes cluster in place and time, so project-level intervals are somewhat optimistic. The
+  report shows both. The spread of per-origin metrics is larger again (withdrawal AUC 0.47–0.60 across seven
+  origins), which says era-to-era variation is the dominant source of uncertainty.
+
+### D-036: Recalibration, and what it did
+- The method is in protocol section 7: hazards are scaled so the model reproduces the 36-month rates of the
+  Y−4 cohort.
+- **Development (A):** recalibration helped only the forest a little. The tie rule then preferred the
+  version without it.
+- **Final test (C):** recalibration improved every family's skill (for example forest withdrawal skill
+  0.041 → 0.127, Cox 0.173 → 0.216), because outcome rates kept falling and the Y−4 cohort (2017) was closer
+  to 2021–22 than pooled history. The fitted constants for the forest fell from 0.85–1.08 in development to
+  0.56 (operational) and 0.85 (withdrawn) at the 2021 origin.
+- **Not acted on:** the primary configuration is unchanged (protocol section 8).
+
+### D-037: Phase 5 results in brief (from `reports/evaluation.md`)
+- **Primary configuration:** cause-specific random survival forest, without `queue_year`, without
+  recalibration.
+- **Final test (2021–22 entrants, n = 3,299, 3 years):**
+  - **Withdrawal:** AUC 0.559 [0.539, 0.579] and Brier skill 0.041 [0.030, 0.051] (project intervals;
+    county-year intervals are wider). It overpredicts (51.6% predicted against 34.3% observed).
+  - **Operational:** only **1** case, so ranking is not estimable. Predicted 4.6% against 0.03% observed.
+- **Against the baselines:** the primary configuration beats both the "most recent fully observed cohort"
+  baseline and the ISO × fuel baseline on withdrawal skill, in development and on the final test (paired
+  intervals exclude 0).
+- **The selection did not transfer.** Cox *with* `queue_year` *and* recalibration was clearly worse than
+  the primary configuration in development (paired withdrawal skill difference −0.050 to −0.025) and
+  clearly better on the final test (+0.16 to +0.19). The best choice changed between eras. That is
+  consistent with the regime shift found in Phases 2 and 4, and it is the main limitation.
+- **Congestion ablation:** no consistent benefit. Without congestion features, withdrawal AUC is slightly
+  higher for every family. With them, operational AUC is higher for Cox and the forest in development
+  (0.693 vs 0.649 and 0.686 vs 0.626).
+- **What a version-2 protocol would do:** pre-register the recalibrated Cox with `queue_year` as a candidate
+  primary configuration, and evaluate it on cohorts that are still unseen (2023+ entrants) once their
+  3-year outcomes exist (end of 2026 data at the earliest). Switching now, after seeing block C, would be
+  tuning on the test set.
+
+### D-038: Re-rendering without re-scoring
+- `make evaluate-render` rebuilds `reports/evaluation.md`, the figures and `docs/model_card.md` from the
+  saved predictions (`data/interim/eval/*.joblib`) and the metric/bootstrap CSVs. It refits and re-scores
+  nothing. A test checks that re-rendering leaves the metric files byte-identical. On the real run, checksums
+  confirmed the metric, bootstrap and block C prediction files were unchanged by three presentation fixes:
+  table headers, the note listing rows that beat the primary configuration, and small-percentage precision.
