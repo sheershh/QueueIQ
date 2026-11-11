@@ -6,6 +6,7 @@ import pytest
 
 from queueiq.app import charts
 from queueiq.app.present import (
+    band_check_text,
     compare_table,
     curve_table,
     long_date,
@@ -112,3 +113,17 @@ def test_app_shows_missing_model_message(monkeypatch):
     at = AppTest.from_file(str(APP), default_timeout=60)
     at.run()
     assert "make train" in at.error[0].value
+
+
+def test_band_check_wording_flags_the_miss():
+    from tests.service_data import FINAL_TEST_CHECK
+
+    text = band_check_text({"final_test_check": FINAL_TEST_CHECK})
+    assert "withdrawing within 3 years, the observed 34.0% fell inside the band" in text
+    assert "off by more than the band" in text and "0.03% happened (1 project)" in text
+
+
+def test_app_says_which_county_was_assumed(app):
+    assert any("County assumed:" in m.value for m in app.markdown)
+    assert any("off by more than the band" in m.value for m in app.markdown)
+    assert any("own accuracy is unknown" in m.value for m in app.markdown)

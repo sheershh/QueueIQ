@@ -31,7 +31,7 @@ def history(entries: pd.DataFrame) -> pd.DataFrame:
 
 def project_row(p: ProjectInput, options: Options, entry_date: pd.Timestamp) -> pd.DataFrame:
     has_storage, is_hybrid = p.flags()
-    county = options.county(p.state, p.county) if p.county else None
+    county, _ = options.resolve_county(p)
     return pd.DataFrame(
         {
             "project_id": [NEW_ID],
@@ -56,7 +56,8 @@ def project_features(
     """One row of MODEL_FEATURES for project p entering on entry_date."""
     # Same state, or same county key: a few LBNL rows share a FIPS code but list another state,
     # and the training features count them as county neighbours.
-    nearby = (hist["state"] == p.state) | (p.county is not None and hist["county_key"] == p.county)
+    county, _ = options.resolve_county(p)
+    nearby = (hist["state"] == p.state) | (county is not None and hist["county_key"] == county.key)
     window = hist[
         nearby & (hist["queue_date"] >= entry_date - LOOKBACK) & (hist["queue_date"] < entry_date)
     ]

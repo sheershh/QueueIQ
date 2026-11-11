@@ -15,6 +15,8 @@ from queueiq.app import charts
 from queueiq.app.present import (
     FUEL_LABELS,
     STAT_LABELS,
+    assumed_county_text,
+    band_check_text,
     compare_table,
     curve_table,
     describe_project,
@@ -23,7 +25,7 @@ from queueiq.app.present import (
     summary_html,
     unique_name,
 )
-from queueiq.service.inputs import MAX_COMPARE, InputError, ProjectInput
+from queueiq.service.inputs import MAX_COMPARE, UNKNOWN_COUNTY, InputError, ProjectInput
 from queueiq.service.predict import Service
 from queueiq.style import OUTCOME_COLORS, OUTCOME_LABELS
 
@@ -82,16 +84,17 @@ def project_form(svc: Service) -> tuple[ProjectInput | None, list[str]]:
         index=states.index(opts.largest_state[iso]),
         help="States with at least 20 past projects in this grid operator.",
     )
-    choices = [None, *[c.key for c in opts.counties.get(state, [])]]
     busiest = opts.busiest_county(state)
     county = st.selectbox(
         "County",
-        choices,
-        index=choices.index(busiest.key) if busiest else 0,
-        format_func=lambda k: "Not specified" if k is None else opts.county(state, k).name,
-        help="Used to count earlier requests nearby. Starts at the county with the most past "
-        "requests in the state. 'Not specified' is treated like past projects whose county "
-        "was not recorded, which itself shifts the prediction.",
+        [*[c.key for c in opts.counties.get(state, [])], UNKNOWN_COUNTY],
+        index=None,
+        placeholder=f"Not chosen: {busiest.name} is assumed" if busiest else "Not chosen",
+        format_func=lambda k: "Not recorded" if k == UNKNOWN_COUNTY else opts.county(state, k).name,
+        help="Used to count earlier requests nearby. If you don't choose one, the county with the "
+        "most past requests in the state is assumed, and the results say so. 'Not recorded' is "
+        "treated like past projects whose county LBNL did not record, which itself shifts the "
+        "prediction.",
     )
     fuel = st.selectbox("Technology", list(FUEL_LABELS), format_func=FUEL_LABELS.get)
     storage = st.checkbox(
@@ -160,6 +163,9 @@ def limitations(ctx: dict) -> None:
   withdrew than the model predicted. Treat the line as an upper end.
 - **Horizon.** Predictions were checked against real outcomes up to {ctx["evaluated_months"]}
   months only. Beyond that (the grey area), the curves are unchecked.
+- **The deployed model's own accuracy is unknown.** It is refit on every project up to the end of
+  2025, so there is no later cohort to check it against yet. That takes 3 to 5 more years of
+  outcomes. The evidence behind it is the backtest of the same fitting procedure on earlier years.
 - **Use.** Compare setups with each other. The probabilities are not literal odds, and the
   explanations describe what the model relies on, not what causes withdrawal or completion.
 - Full details: [model card]({MODEL_CARD}).
@@ -175,8 +181,13 @@ def outlook_tab(svc: Service, project: ProjectInput, ctx: dict) -> None:
         theme=None,
     )
     st.markdown(legend(), unsafe_allow_html=True)
+    if pred["county"]["assumed"]:
+        st.markdown(
+            f'<p class="qi-muted">{assumed_county_text(pred, project)}</p>', unsafe_allow_html=True
+        )
     st.markdown(summary_html(pred), unsafe_allow_html=True)
-    st.markdown(f'<p class="qi-caution">{ctx["calibration_warning"]}</p>', unsafe_allow_html=True)
+    caution = f"{ctx['calibration_warning']} {band_check_text(ctx['past_error_range'])}"
+    st.markdown(f'<p class="qi-caution">{caution}</p>', unsafe_allow_html=True)
     with st.expander("Show the curves as a table"):
         st.dataframe(curve_table(pred), hide_index=True, width="stretch")
     limitations(ctx)
@@ -221,9 +232,9 @@ def compare_tab(project: ProjectInput | None) -> None:
         '<p class="qi-muted">Dot: model. Line: past-error range.</p>', unsafe_allow_html=True
     )
     st.dataframe(compare_table(preds), hide_index=True, width="stretch")
-    for i, p in enumerate(saved):
+    for i, (p, pred) in enumerate(zip(saved, preds, strict=True)):
         c1, c2 = st.columns([5, 1], vertical_alignment="center")
-        c1.markdown(f"**{p['name']}**: {describe_project(p)}")
+        c1.markdown(f"**{p['name']}**: {describe_project(p, pred['county'])}")
         if c2.button("Remove", key=f"remove-{i}"):
             saved.pop(i)
             st.rerun()
@@ -236,8 +247,8 @@ def why_tab(project: ProjectInput, ctx: dict) -> None:
         '<p class="qi-prose">Each bar shows how many percentage points a group of features moves '
         "this project's prediction, compared with the model's average prediction for "
         f"{ctx['background_years'][0]}–{ctx['background_years'][1]} entrants. This is what the "
-        "model relies on, not proof of cause, and a group can move predictions without making "
-        "them more accurate.</p>",
+        "model relies on, not proof of cause, and a group can move predictions without improving "
+        "them.</p>",
         unsafe_allow_html=True,
     )
     cols = st.columns(2, gap="large")

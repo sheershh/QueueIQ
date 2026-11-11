@@ -16,6 +16,27 @@ from queueiq.service.inputs import Options
 from queueiq.service.predict import Service
 
 CUTOFF = pd.Timestamp("2025-12-31")
+FINAL_TEST_CHECK = {
+    "block": "C",
+    "test_years": [2021, 2022],
+    "n": 100,
+    "outcomes": {
+        "withdrawn": {
+            "observed": 0.34,
+            "cases": 34,
+            "band_low": 0.31,
+            "band_high": 0.48,
+            "inside_band": True,
+        },
+        "operational": {
+            "observed": 0.0003,
+            "cases": 1,
+            "band_low": 0.007,
+            "band_high": 0.056,
+            "inside_band": False,
+        },
+    },
+}
 STATES = {"PJM": ("VA", ["51001", "51003", "51005"]), "MISO": ("IL", ["17001", "17003"])}
 MULTIPLIERS = [
     {"operational": 0.5, "withdrawn": 0.8},
@@ -86,7 +107,8 @@ def synthetic_service(seed: int = 0) -> Service:
             "origins": [
                 {"block": "A", "origin": 2014 + i, "multiplier": m}
                 for i, m in enumerate(MULTIPLIERS)
-            ]
+            ],
+            "final_test_check": FINAL_TEST_CHECK,
         },
     }
     background = X.sample(8, random_state=0).reset_index(drop=True)

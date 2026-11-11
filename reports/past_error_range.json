@@ -1,7 +1,7 @@
 {
   "primary_configuration": "rsf_cause_specific|qy=0|recal=0",
   "horizon_months": 36,
-  "blocks_used": "A (2014-2017) and B (2018-2020); block C (final test) not used",
+  "blocks_used": "A (2014-2017) and B (2018-2020); block C (final test) only checks the band",
   "origins": [
     {
       "block": "A",
@@ -122,5 +122,33 @@
         "withdrawn": 0.5534299239164585
       }
     }
-  ]
+  ],
+  "final_test_check": {
+    "block": "C",
+    "test_years": [
+      2021,
+      2022
+    ],
+    "n": 3299,
+    "outcomes": {
+      "operational": {
+        "predicted": 0.04644189029932022,
+        "observed": 0.0003031221582297666,
+        "cases": 1,
+        "band_low": 0.0070476186819313094,
+        "band_high": 0.05570373428267028,
+        "inside_band": false,
+        "multiplier_needed": 0.010000000000000049
+      },
+      "withdrawn": {
+        "predicted": 0.5156439542770386,
+        "observed": 0.34283116095786603,
+        "cases": 1131,
+        "band_low": 0.31057885435392335,
+        "band_high": 0.4822979189162196,
+        "inside_band": true,
+        "multiplier_needed": 0.5644812130699414
+      }
+    }
+  }
 }

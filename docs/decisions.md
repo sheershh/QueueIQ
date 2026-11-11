@@ -586,3 +586,27 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
   at about 2.5 GB. `MALLOC_ARENA_MAX=2` and scoring the 8,192 Shapley rows in chunks of 1,024 (identical
   results) keep the dashboard within that. A 3 GB Docker VM was enough in testing; 4 GB gives headroom.
 - **Why tab is lazy:** the explanation (about 1 s) is computed only while its tab is open.
+
+## Before Phase 8: changes requested after Phase 7 review (2026-11-12)
+
+### D-051: Does the final-test miss fall inside the past-error band?
+- **Check (report only):** the 2021–22 cohort's mean prediction was redrawn with each past year's
+  multipliers, giving the band for that cohort at 3 years. Nothing was fitted on block C.
+- **Withdrawal: inside.** Predicted 51.6%, band 31.1–48.2%, observed 34.3%. The multiplier that would have
+  matched (0.56) lies inside the past range (0.50–0.91).
+- **Operation: outside.** Predicted 4.6%, band 0.7–5.6%, observed 0.03% (1 of 3,299 projects). Matching it
+  needs a multiplier at the solver's floor (0.01), far below the past range (0.11–1.16).
+- **On screen:** the Outlook tab now states both results next to the Phase 5 warning, generated from
+  `reports/past_error_range.json` (`final_test_check`), including that the most recent checked cohort was
+  off by more than the band for reaching operation.
+
+### D-052: An assumed county is always named
+- Leaving the county empty (dashboard or API) now means "assume the county with the most past requests in
+  the state", and every prediction, comparison and explanation returns which county was used and
+  `assumed: true`. The dashboard shows "County assumed: ..." under the chart and marks it "(assumed)" in
+  Compare.
+- `"unknown"` is the explicit choice for a county that is not recorded (the model's county-missing case).
+  This replaces D-047's pre-selected default, which looked like a user choice even when it was not.
+- The limitations panel now also says the deployed refit's own accuracy is unknown: it is fit on every
+  project through 2025, so no later cohort exists to check it, and the evidence is the backtest of the same
+  procedure.

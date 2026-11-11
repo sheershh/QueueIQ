@@ -123,7 +123,11 @@ class Service:
 
     def predict(self, p: ProjectInput) -> dict:
         X = self.features(p)
-        return {"project": p.model_dump(), **self._predict_rows(X)[0]}
+        return {
+            "project": p.model_dump(),
+            "county": self.options.county_info(p),
+            **self._predict_rows(X)[0],
+        }
 
     def compare(self, projects: list[ProjectInput]) -> list[dict]:
         if not 1 <= len(projects) <= MAX_COMPARE:
@@ -137,7 +141,10 @@ class Service:
         if problems:
             raise InputError(problems)
         preds = self._predict_rows(pd.concat(rows, ignore_index=True))
-        return [{"project": p.model_dump(), **r} for p, r in zip(projects, preds, strict=True)]
+        return [
+            {"project": p.model_dump(), "county": self.options.county_info(p), **r}
+            for p, r in zip(projects, preds, strict=True)
+        ]
 
     # -- explanation ----------------------------------------------------------------------
     def explain(self, p: ProjectInput) -> dict:
@@ -165,6 +172,7 @@ class Service:
             }
         return {
             "project": p.model_dump(),
+            "county": self.options.county_info(p),
             "targets": targets,
             "text": narrative(table, row, self.meta["observed_reference"]),
             "drivers": drivers(table, row),

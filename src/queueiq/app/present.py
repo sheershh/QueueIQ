@@ -92,10 +92,55 @@ def compare_table(preds: list[dict]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def describe_project(proj: dict) -> str:
+def describe_project(proj: dict, county: dict | None = None) -> str:
     fuel = FUEL_LABELS[proj["fuel"]].split(" (")[0]
     storage = " + storage" if proj["storage"] and proj["fuel"] != "battery" else ""
-    return f"{proj['capacity_mw']:,.0f} MW {fuel.lower()}{storage}, {proj['state']} ({proj['iso']})"
+    where = proj["state"]
+    if county:
+        name = (
+            f"county {county['name']}" if county["key"] == "unknown" else f"{county['name']} County"
+        )
+        where = f"{name}{' (assumed)' if county['assumed'] else ''}, {proj['state']}"
+    return f"{proj['capacity_mw']:,.0f} MW {fuel.lower()}{storage}, {where} ({proj['iso']})"
+
+
+def assumed_county_text(pred: dict, project: dict | object) -> str:
+    state = project["state"] if isinstance(project, dict) else project.state
+    return (
+        f"County assumed: {pred['county']['name']}, the county in {state} with the most past "
+        "requests. Choose a county on the left to change it."
+    )
+
+
+OUTCOME_PHRASES = {"withdrawn": "withdrawing", "operational": "reaching operation"}
+
+
+def band_check_text(past: dict) -> str:
+    """How the most recent checked cohort compares with the band (report-only check, D-051)."""
+    check = past["final_test_check"]
+    years = "–".join(str(y) for y in check["test_years"])
+    parts = []
+    for k in ("withdrawn", "operational"):
+        v = check["outcomes"][k]
+        band = span(v["band_low"], v["band_high"])
+        what = f"{OUTCOME_PHRASES[k]} within 3 years"
+        if v["inside_band"]:
+            parts.append(
+                f"For {what}, the observed {pct(v['observed'])} fell inside the band ({band})."
+            )
+        else:
+            cases = f"{v['cases']} project" + ("" if v["cases"] == 1 else "s")
+            parts.append(
+                f"For {what}, the most recent checked cohort was off by more than the band: "
+                f"the band for {years} entrants was {band}, but {pct2(v['observed'])} "
+                f"happened ({cases})."
+            )
+    return " ".join(parts)
+
+
+def pct2(x: float) -> str:
+    """Percent with two decimals for values under 1% (so 0.03% doesn't print as 0.0%)."""
+    return f"{100 * x:.2f}%" if x < 0.01 else pct(x)
 
 
 def long_date(iso_date: str) -> str:

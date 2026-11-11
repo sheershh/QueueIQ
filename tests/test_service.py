@@ -8,7 +8,7 @@ from queueiq.features.build import build_features
 from queueiq.features.congestion import county_key
 from queueiq.models.data import MODEL_FEATURES
 from queueiq.service.features import project_features
-from queueiq.service.inputs import MAX_COMPARE, InputError, ProjectInput
+from queueiq.service.inputs import MAX_COMPARE, UNKNOWN_COUNTY, InputError, ProjectInput
 from queueiq.service.predict import ENTRIES_FILE, months_in_queue
 from tests.service_data import MULTIPLIERS, synthetic_entries, synthetic_service
 
@@ -27,7 +27,7 @@ def as_input(row) -> ProjectInput:
     return ProjectInput(
         iso=row.iso,
         state=row.state,
-        county=key if pd.notna(key) else None,
+        county=key if pd.notna(key) else UNKNOWN_COUNTY,
         fuel=fuel,
         capacity_mw=row.capacity_mw,
         storage=bool(row.has_storage) and fuel != "battery",
@@ -226,3 +226,21 @@ def test_origin_multipliers_reproduce_observed_rates():
         observed = ((event == code) & (time <= 36)).mean()
         assert row["observed"][k] == pytest.approx(observed)
         assert redrawn[k][:, 35].mean() == pytest.approx(observed, abs=1e-6)
+
+
+def test_empty_county_is_assumed_and_reported(svc):
+    """No county chosen: the busiest county in the state is used, and the output says so."""
+    empty = ProjectInput(iso="PJM", state="VA", fuel="solar", capacity_mw=50)
+    busiest = svc.options.busiest_county("VA")
+    out = svc.predict(empty)
+    assert out["county"] == {"key": busiest.key, "name": busiest.name, "assumed": True}
+    chosen = svc.predict(empty.model_copy(update={"county": busiest.key}))
+    assert chosen["county"]["assumed"] is False
+    for a, b in zip(chosen["headline"], out["headline"], strict=True):  # same county, same result
+        assert a["model"] == pytest.approx(b["model"]) and a["high"] == pytest.approx(b["high"])
+    unknown = svc.predict(empty.model_copy(update={"county": UNKNOWN_COUNTY}))
+    assert unknown["county"] == {"key": UNKNOWN_COUNTY, "name": "not recorded", "assumed": False}
+    date = svc.entry_date
+    assert not project_features(
+        empty.model_copy(update={"county": UNKNOWN_COUNTY}), svc.hist, svc.options, date
+    )["county_known"][0]

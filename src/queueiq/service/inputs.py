@@ -20,6 +20,7 @@ ISOS = ("PJM", "MISO", "CAISO", "SPP")  # model scope (D-019)
 FUELS = (*MAIN_FUELS, "other")
 MIN_STATE_ROWS = 20  # states with fewer in-scope projects in that ISO are not offered
 MAX_COMPARE = 5
+UNKNOWN_COUNTY = "unknown"  # county not recorded: treated like LBNL rows with no county
 
 
 class ProjectInput(BaseModel):
@@ -29,7 +30,10 @@ class ProjectInput(BaseModel):
     iso: Literal["PJM", "MISO", "CAISO", "SPP"]
     state: str = Field(min_length=2, max_length=2, description="Two-letter state code")
     county: str | None = Field(
-        None, description="County key from /options (5-digit FIPS); empty = county not specified"
+        None,
+        description="County key from /options (usually the 5-digit FIPS code), or 'unknown' for a "
+        "county that is not recorded. Left empty, the county with the most past requests in the "
+        "state is assumed, and the response says which one.",
     )
     fuel: Literal["solar", "wind", "battery", "gas", "other"]
     capacity_mw: float = Field(gt=0, description="Capacity of the primary resource, MW")
@@ -105,6 +109,22 @@ class Options:
     def county(self, state: str, key: str) -> County | None:
         return next((c for c in self.counties.get(state, []) if c.key == key), None)
 
+    def resolve_county(self, p: ProjectInput) -> tuple[County | None, bool]:
+        """(county used, whether it was assumed). None means 'unknown' (county not recorded)."""
+        if p.county is None:
+            return self.busiest_county(p.state), True
+        if p.county == UNKNOWN_COUNTY:
+            return None, False
+        return self.county(p.state, p.county), False
+
+    def county_info(self, p: ProjectInput) -> dict:
+        county, assumed = self.resolve_county(p)
+        return {
+            "key": county.key if county else UNKNOWN_COUNTY,
+            "name": county.name if county else "not recorded",
+            "assumed": assumed,
+        }
+
     def check(self, p: ProjectInput) -> None:
         problems = []
         if p.state not in self.states[p.iso]:
@@ -113,7 +133,7 @@ class Options:
                 f"{MIN_STATE_ROWS} past projects there. Choose one of "
                 f"{', '.join(self.states[p.iso])}."
             )
-        elif p.county is not None and self.county(p.state, p.county) is None:
+        elif p.county not in (None, UNKNOWN_COUNTY) and self.county(p.state, p.county) is None:
             problems.append(f"County {p.county!r} is not a {p.state} county in the LBNL data.")
         if p.capacity_mw > self.capacity_max:
             problems.append(
@@ -131,6 +151,8 @@ class Options:
             "counties": {
                 s: [{"key": c.key, "name": c.name} for c in v] for s, v in self.counties.items()
             },
+            "county_when_empty": {s: self.busiest_county(s).name for s in self.counties},
+            "unknown_county_key": UNKNOWN_COUNTY,
             "capacity_mw": {"min_exclusive": 0, "max": self.capacity_max},
             "max_compare": MAX_COMPARE,
         }
