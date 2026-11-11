@@ -68,7 +68,7 @@ and Docker with about 3 GB of memory for containers (4 GB is comfortable).
 
 ```bash
 make setup                 # pinned dependencies
-make data && make train    # processed data + the deployed model in models/ (under a minute)
+make data && make train    # processed data + the deployed model in models/ (about 2 minutes)
 docker compose up          # dashboard: http://localhost:8501   API: http://localhost:8000/docs
 ```
 
@@ -76,6 +76,10 @@ The first `docker compose up` builds the image. That takes about 6 minutes on an
 mostly compiling one scientific dependency. The image holds code only: `models/` and `data/processed/` are
 mounted read-only, so the model is never baked into the image or committed. Without Docker, run `make app`
 (dashboard) and `make api` (API) instead.
+
+If you use Colima instead of Docker Desktop, keep the repository inside your home folder: Colima shares only
+the home folder with its virtual machine by default, so mounts from elsewhere arrive empty. The API's
+`/health` then reports the missing files.
 
 ```bash
 curl -s -X POST localhost:8000/predict -H 'content-type: application/json' \

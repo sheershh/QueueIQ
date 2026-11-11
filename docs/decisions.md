@@ -627,3 +627,18 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
 - **Write-up wording:** plain language; it avoids "accurate" and "high-performing" and reports the negative
   findings (withdrawal near chance, over-prediction, the selection not carrying over, the congestion features
   not helping) next to the positive one.
+
+### D-054: Fresh-clone run of the README steps (2026-11-12)
+- Cloned `main` from GitHub into an empty folder, placed the LBNL file by hand (the documented manual step),
+  then ran the README commands. Times on the author's Apple-silicon laptop:
+  - `make setup` 3 s (uv's download cache was warm);
+  - `make data` 9 s;
+  - `make train` 1 min 32 s, which includes building the features;
+  - the first `docker compose up` rebuilt the dependency layer from source, about 6 to 10 minutes;
+  - a later `docker compose up` was healthy in 13 s.
+- **Reproducibility:** after the run, `git status` in the clone was empty, so every regenerated report was
+  byte-identical to the committed one. `models/deploy_meta.json` matched the original exactly.
+- **Found and documented:** Colima shares only the home folder with its VM, so a clone outside it mounts empty
+  `models/` and `data/processed/` folders. The API reported this through `/health` (503 with the fix), and the
+  README now says so.
+- The README screenshots were retaken from the fresh clone's containers.
