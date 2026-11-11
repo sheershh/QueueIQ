@@ -1,5 +1,5 @@
 # Every pipeline step is a make target. Later phases add: data, features, train, evaluate, app.
-.PHONY: help setup data eda lint format test check clean
+.PHONY: help setup data eda features lint format test check clean
 
 UV ?= uv
 
@@ -16,6 +16,9 @@ data:  ## Verify the raw LBNL file and build data/processed/queue_entries.parque
 
 eda:  ## Exploratory analysis: reports/eda.md + reports/figures/ (needs make data first)
 	$(UV) run python -m queueiq.eda.build
+
+features:  ## Leakage-safe feature table: data/processed/features.parquet + reports/features.md
+	$(UV) run python -m queueiq.features.build
 
 lint:  ## Check lint and formatting (no changes made)
 	$(UV) run ruff check .

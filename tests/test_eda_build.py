@@ -1,4 +1,4 @@
-"""End-to-end: fake LBNL file -> `make data` -> `make eda`, all in a temp directory."""
+"""End-to-end: fake LBNL file -> `make data` -> `make eda` -> `make features` (temp dir)."""
 
 import hashlib
 import itertools
@@ -7,6 +7,7 @@ import pandas as pd
 
 from queueiq import config
 from queueiq.eda import build as eda_build
+from queueiq.features import build as features_build
 from queueiq.ingestion import build as data_build
 from queueiq.ingestion import lbnl
 from tests.test_build import write_fake_lbnl_file
@@ -36,7 +37,7 @@ def fake_rows():
     return rows
 
 
-def test_make_eda_writes_report_and_figures(tmp_path, monkeypatch):
+def test_pipeline_writes_reports_figures_and_features(tmp_path, monkeypatch):
     raw_file = tmp_path / "data" / "raw" / lbnl.RAW_FILENAME
     write_fake_lbnl_file(raw_file, fake_rows())
 
@@ -57,8 +58,19 @@ def test_make_eda_writes_report_and_figures(tmp_path, monkeypatch):
     monkeypatch.setattr(eda_build, "INTERIM_FILE", interim)
     monkeypatch.setattr(eda_build, "REPORT_FILE", tmp_path / "reports" / "eda.md")
 
+    monkeypatch.setattr(features_build, "PROCESSED_FILE", processed)
+    monkeypatch.setattr(
+        features_build, "FEATURES_FILE", tmp_path / "data" / "processed" / "f.parquet"
+    )
+    monkeypatch.setattr(features_build, "REPORT_FILE", tmp_path / "reports" / "features.md")
+
     data_build.main()
     eda_build.main()
+    features_build.main()
+
+    feats = pd.read_parquet(tmp_path / "data" / "processed" / "f.parquet")
+    assert len(feats) == len(fake_rows())
+    assert "## Feature summary" in (tmp_path / "reports" / "features.md").read_text()
 
     report = (tmp_path / "reports" / "eda.md").read_text()
     assert "## Key findings" in report

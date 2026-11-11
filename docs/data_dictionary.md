@@ -66,3 +66,9 @@ may be used as model inputs, to avoid data leakage.
 LBNL columns not carried over: `project_name` (mostly missing), `cluster`, `IA_phase_raw`, `mw_2`, `mw_3`,
 `prop_year`, and `q_year` (recomputed from `queue_date`). All of them remain in
 `data/interim/lbnl_queue_sheet.parquet`.
+
+## Feature table: `data/processed/features.parquet`
+
+One row per queue entry, keyed by `project_id`, plus `in_model_scope`. Every feature is built only from
+information available on the entry date. The full list, definitions and summary statistics are in
+[`reports/features.md`](../reports/features.md), and the rules are in decisions D-023 to D-026.

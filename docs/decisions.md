@@ -209,3 +209,73 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
   - 2020 entrants: 2.2% operational within 5 years, against 15.7% for 2010–2014 entrants.
 - **Lesson carried into modelling:** Under a time trend, a survival model needs entry year (or a proxy for
   it) as a feature, for the same reason. Evaluation must also respect the horizon cap.
+
+## Phase 3: Features (2026-11-11)
+
+### D-023: How congestion is defined
+- **Decision:** For a project entering on date d, among **all** LBNL rows in the same county (and,
+  separately, the same state), consider requests with `queue_date` in **[d − 5 years, d)**. Count them,
+  sum their MW, and count how many have a `withdrawal_date` **strictly before d**. Also compute the
+  withdrawn share and the number of state requests in the previous 12 months.
+- **Strictly earlier, not "on or before":** 79% of in-scope projects share their entry date with another
+  request in the same state. These are cluster submission windows. Nobody knows on the day who else files
+  that day, and a withdrawal stamped on the entry day can't be put in order relative to the entry. Strict
+  inequality is the leakage-safe choice. The cost is that same-cluster peers are not counted.
+- **All regions, not just the model ISOs:** Congestion is about physical location, so a non-ISO utility's
+  request in the same county also competes for the grid. Out-of-scope rows (pre-2010, upgrades, other
+  regions) still count as earlier requests.
+- **5-year look-back instead of all history:** With no look-back limit, 6.9% of a project's earlier county
+  entries are undated withdrawals, mostly old ones. These are "zombie" requests that will never count as
+  withdrawn. A 5-year window cuts that to 3.7% (see `reports/features.md`) and stops the counts growing just
+  because the dataset starts in 1995.
+- **County key:** 5-digit FIPS code. If that is missing, state + county name. Otherwise the county is
+  unknown, and its features are missing with `county_known = False`.
+- **Alternatives:** Count only the same ISO. Count only requests still active at entry; this needs exit
+  dates, which are missing for some older rows, so undated withdrawals would wrongly count as active.
+  Point of interconnection (POI) level, which is a stretch goal.
+
+### D-024: Missing dates in the congestion counts
+| Case | Handling | Why |
+|---|---|---|
+| Earlier request with no `queue_date` | Not counted | Can't be placed in time |
+| Earlier request withdrawn, no `withdrawal_date` | Counted as a request, never as withdrawn | We can't know it had withdrawn by d; its 2025 status is future information |
+| Withdrawal dated on or after d | Not counted as withdrawn | Not yet known at entry |
+| Project with no county | County features missing, `county_known = False` | 13.6% of in-scope CAISO projects; Phase 4 must handle it (LightGBM: native; Cox: impute within fold + indicator) |
+| No earlier requests | `*_withdrawn_share_5y` missing (0/0) | Undefined, not zero |
+| Capacity ≤ 0 or missing | Counted as a request, adds 0 MW | The request existed; its size is unknown |
+- **Known bias:** `*_prior_withdrawn_*` slightly understates true withdrawals (by about 3.7% of earlier
+  county requests). This bias is the same at training and prediction time, so the model learns from the
+  same imperfect signal it will see in use.
+
+### D-025: Entry year under a time trend and a time-based split
+- **Problem:** Test cohorts are always later than training cohorts, so `queue_year` always has to be
+  extrapolated. Trees (LightGBM, random survival forests) treat any later year like the last training year.
+  Cox extends the trend in a straight line.
+- **Decision:**
+  - Keep `queue_year` as a numeric feature (one-hot categories would be useless for unseen years).
+  - Also provide at-entry congestion measures as proxies for the queue boom. For these, 85–100% of
+    2020–2025 entries fall inside the range seen in 2010–2019 entries; for `queue_year` it is 0%
+    (table in `reports/features.md`).
+- **Why keep entry year at all:** Censoring is set by entry year, and outcome risk also depends on entry
+  year. Survival models assume censoring is independent of the outcome *given the features*, which is only
+  plausible if entry year (or a proxy) is a feature. D-022 shows the bias when it is left out.
+- **To be decided by evidence in Phase 4/5:** an ablation with and without `queue_year` in the
+  rolling-origin backtest.
+
+### D-026: The feature code can't read outcomes
+- `build_features` first narrows its input to `ENTRY_SAFE_COLUMNS` + `withdrawal_date`. `status`, outcome
+  dates, interconnection-agreement data and the proposed online date never reach feature code. The
+  proposed online date is excluded because it can be revised after entry.
+- `state` is stored raw. Grouping rare states, encoding, and imputation happen in Phase 4 inside each
+  training fold, because fitting them on all rows would let test-period data shape the features.
+- **Leakage tests** (`tests/test_features_leakage.py`):
+  1. A hand-built county example worked out by hand, covering every edge case.
+  2. A "hide the future" test: deleting everything after a project's entry date and scrambling `status`
+     must leave its features unchanged.
+  3. A test that outcome columns are neither read nor produced.
+
+  Planting three deliberate leaks (counting future entries, counting future withdrawals, counting same-day
+  withdrawals) made the tests fail each time, which shows they can catch leaks.
+- **No look at outcomes during feature design:** feature-versus-outcome relationships were not examined
+  on the full dataset. That analysis happens in Phase 4 on training folds only, so test-period outcomes
+  can't influence which features are chosen.

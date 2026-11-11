@@ -4,13 +4,13 @@ import numpy as np
 import pandas as pd
 
 from queueiq.eda.survival import aalen_johansen, value_at
+from queueiq.features.tabular import fuel_group
 
 HORIZONS_MONTHS = (36, 60)  # 3 and 5 years
 # Curves stop once fewer than this many projects are still observed (D-019); horizon
 # estimates need at least this many projects with complete follow-up (D-022).
 MIN_AT_RISK = 30
 ERAS = {"2010-2014": (2010, 2014), "2015-2019": (2015, 2019), "2020-2025": (2020, 2025)}
-MAIN_FUELS = ("solar", "wind", "battery", "gas")
 
 
 def in_scope(df: pd.DataFrame) -> pd.DataFrame:
@@ -24,7 +24,7 @@ def add_groups(df: pd.DataFrame) -> pd.DataFrame:
     for name, (lo, hi) in ERAS.items():
         era[out["queue_year"].between(lo, hi).fillna(False)] = name
     out["era"] = era
-    out["fuel_group"] = out["fuel_type"].where(out["fuel_type"].isin(MAIN_FUELS), "other")
+    out["fuel_group"] = fuel_group(out["fuel_type"])
     return out
 
 
