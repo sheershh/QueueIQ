@@ -4,7 +4,7 @@ Survival and competing-risks models that estimate whether a proposed US energy p
 interconnection queue reaches commercial operation or withdraws, and how long that takes.
 Data: Lawrence Berkeley National Laboratory "Queued Up" dataset.
 
-**Status:** Phase 0 (project setup). No data, models, or results yet.
+**Status:** Phase 1 (data ingestion) complete. No models or results yet.
 
 ## Roadmap
 0. Setup: environment, lint, tests, CI
@@ -25,11 +25,23 @@ Requires [uv](https://docs.astral.sh/uv/) and `make`. uv installs the pinned Pyt
 make setup   # install pinned dependencies + git hooks
 make test    # run tests
 make lint    # lint and format checks
+make data    # verify the raw LBNL file and build the processed dataset
 make help    # list all targets
 ```
 
+### Getting the data
+The LBNL data file needs a free registration, so it can't be downloaded by a script.
+1. Go to https://emp.lbl.gov/queues and download the **Queued Up 2026 Data File (XLSX)**.
+2. Save it unchanged as `data/raw/LBNL_Ix_Queue_Data_File_thru2025.xlsx`.
+3. Run `make data`. It checks the file's SHA-256 against [docs/data_sources.md](docs/data_sources.md),
+   then writes `data/processed/queue_entries.parquet` and [reports/data_quality.md](reports/data_quality.md).
+
+Data: *Queued Up Data File. Copyright (c) 2026, The Regents of the University of California, through
+Lawrence Berkeley National Laboratory & GridTracker. CC BY 4.0.*
+
 ## Docs
 - [docs/decisions.md](docs/decisions.md): design decisions and why they were made
-- [docs/data_sources.md](docs/data_sources.md): data provenance (TBD, Phase 1)
-- [docs/data_dictionary.md](docs/data_dictionary.md): column definitions (TBD, Phase 1)
+- [docs/data_sources.md](docs/data_sources.md): data provenance, license, checksum
+- [docs/data_dictionary.md](docs/data_dictionary.md): column definitions and which are safe as features
+- [reports/data_quality.md](reports/data_quality.md): generated data-quality report and cleaning waterfall
 - [docs/model_card.md](docs/model_card.md): model documentation (TBD, Phase 5)

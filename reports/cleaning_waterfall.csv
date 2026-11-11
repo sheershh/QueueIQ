@@ -1,0 +1,11 @@
+step,reason,rows_removed,rows_remaining
+start,All rows in the LBNL sheet,0,38201
+unknown_status,Status is 'unknown',10,38191
+missing_queue_date,No queue entry date,664,37527
+not_new_generation,"Surplus/upgrade/replacement request, not a new plant",200,37327
+region_out_of_scope,"Region outside PJM, MISO, CAISO, SPP (event dates too incomplete)",18785,18542
+entered_before_2010,Entered before 2010 (withdrawal dates often missing),3553,14989
+duplicate_queue_id,Reused queue ID; cannot tell which row is correct,0,14989
+missing_event_date,Event date missing,170,14819
+event_before_entry,Event date before entry date,22,14797
+nonpositive_capacity,"Capacity zero, negative, or missing",1,14796

@@ -4,6 +4,7 @@ Every module should import paths and the random seed from here instead of
 hard-coding them, so the whole pipeline can be moved or re-seeded in one place.
 """
 
+from datetime import date
 from pathlib import Path
 
 # src/queueiq/config.py -> parents[2] is the repository root.
@@ -25,3 +26,8 @@ def ensure_dirs() -> None:
     """Create the data and report directories if they do not exist yet."""
     for d in (RAW_DIR, INTERIM_DIR, PROCESSED_DIR, FIGURES_DIR):
         d.mkdir(parents=True, exist_ok=True)
+
+
+# LBNL "Queued Up" 2026 edition covers queue data through the end of 2025.
+# Projects still in the queue are right-censored at this date (see docs/decisions.md D-010).
+DATA_CUTOFF = date(2025, 12, 31)

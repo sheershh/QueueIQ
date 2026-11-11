@@ -1,5 +1,5 @@
 # Every pipeline step is a make target. Later phases add: data, features, train, evaluate, app.
-.PHONY: help setup lint format test check clean
+.PHONY: help setup data lint format test check clean
 
 UV ?= uv
 
@@ -10,6 +10,9 @@ setup:  ## Install pinned dependencies from uv.lock and the git pre-commit hooks
 	@command -v $(UV) >/dev/null || { echo "uv is not installed: see https://docs.astral.sh/uv/"; exit 1; }
 	$(UV) sync --frozen
 	@if [ -d .git ]; then $(UV) run pre-commit install; else echo "Not a git repo: skipping pre-commit install"; fi
+
+data:  ## Verify the raw LBNL file and build data/processed/queue_entries.parquet + reports/data_quality.md
+	$(UV) run python -m queueiq.ingestion.build
 
 lint:  ## Check lint and formatting (no changes made)
 	$(UV) run ruff check .
