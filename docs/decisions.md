@@ -439,3 +439,52 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
   nothing. A test checks that re-rendering leaves the metric files byte-identical. On the real run, checksums
   confirmed the metric, bootstrap and block C prediction files were unchanged by three presentation fixes:
   table headers, the note listing rows that beat the primary configuration, and small-percentage precision.
+
+## Phase 6: Explainability (2026-11-11)
+
+### D-039: Explain the deployed primary configuration, in seven feature groups
+- **Which model:** the Phase 5 primary configuration (cause-specific random survival forest, without
+  `queue_year`), not LightGBM as originally sketched in the plan. The dashboard must explain the model
+  it actually uses.
+- **Deployment model:** the same configuration refit on **all** in-scope projects (14,796), with outcomes
+  as of 2025-12-31. Phase 5 evaluated the *procedure* (fit on the past, predict the future). The deployed
+  refit applies that procedure with everything known now, and its own accuracy can only be checked as new
+  cohorts mature. Fit time is about 17 s; the file is about 90 MB compressed (`models/`, gitignored). A
+  Cox model on the same features is saved as an interpretable reference.
+- **Seven groups:** size, technology, grid operator, state, county congestion, state congestion, state
+  momentum. The 16 features are highly correlated (for example the five county-congestion columns), so
+  per-feature attributions would be unstable and hard to read. Groups match how a developer thinks.
+
+### D-040: Exact grouped Shapley values (no SHAP library)
+- **Method:** interventional (marginal) Shapley values over the 7 groups. For each of the 2^7 = 128 group
+  combinations, the model is averaged over a fixed background, with the project's own values for the
+  groups in the combination. This is exact, needs no sampling, and needs no new dependency. Tests check it
+  against toy models with known answers: additive weights, an even split for a pure interaction, 0 for an
+  unused group, and contributions that add up to prediction minus baseline.
+- **Background:** 64 random 2021–2025 in-scope entrants (seed 42), the "typical recent project".
+- **Targets:** P(withdrawn within 3 years) and P(operational within 5 years). "Slow" is shown as a low
+  chance of reaching operation within 5 years. A median wait is not reported, because for most projects
+  the cumulative chance of operation never reaches 50%, so a median wait is undefined.
+- **Cost:** about 0.9 s per project, which is acceptable for an interactive dashboard.
+
+### D-041: Grouped permutation importance on the Phase 5 test cohorts
+- **Method:** shuffle a group's columns together across test projects, re-predict, and measure the drop in
+  Brier skill and AUC at 3 years. 5 repeats, for the four development origins and the final test.
+- **Models:** the Phase 5 models at those origins are refit. Their test predictions match the saved Phase 5
+  predictions to within 3e-08 (float32 rounding), which is a reproducibility check of the whole pipeline.
+- **Report only:** no model, feature or setting is changed because of it.
+
+### D-042: What the explanations say (and don't)
+- **Operational:** out of sample, the model's ranking comes almost entirely from **size** and
+  **technology**. Shuffling them costs 0.11 and 0.10 AUC in development. Congestion adds little.
+- **Withdrawal:** every group is worth very little out of sample (the largest development AUC drop is
+  0.021, from technology). That is consistent with the near-chance withdrawal ranking in Phase 5.
+- **Shapley vs permutation:** for the deployed model, withdrawal predictions are moved most by
+  **state-level** groups (state congestion, state momentum, state). Yet those groups add little accuracy
+  in development. On the final test, shuffling state congestion *improved* the operational level, which
+  is a calibration effect (1 case). The model leans on state-level history that does not reliably carry
+  forward. That is the explanation-side view of the regime shift. The dashboard shows Shapley values for
+  "what the model is doing" with a note that they are not evidence of accuracy or causation.
+- **Cox hazard ratios** are reported as an interpretable reference, with caveats: correlated features,
+  ridge penalty, approximate proportional hazards, not causal. The clearest signal agrees with the forest:
+  gas projects have 2.3× the hazard of reaching operation compared with the battery reference category.

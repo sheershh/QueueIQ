@@ -40,6 +40,7 @@ class Split:
     test_years: tuple[int, int]
     test_dropped_short_followup: int = 0
     test_ids: np.ndarray | None = None
+    train_ids: np.ndarray | None = None
 
 
 def month_index(months: pd.Series) -> np.ndarray:
@@ -113,4 +114,5 @@ def make_split(
         test_years=test_years,
         test_dropped_short_followup=dropped,
         test_ids=test["project_id"].to_numpy(),
+        train_ids=train["project_id"].to_numpy(),
     )

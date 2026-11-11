@@ -1,1 +1,1 @@
-"""Coefficients, permutation importance, and SHAP."""
+"""Explanations: grouped Shapley values, permutation importance, and Cox hazard ratios."""
