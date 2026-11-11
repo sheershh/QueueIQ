@@ -522,3 +522,67 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
 - Setup is `make data && make train && docker compose up`.
 - License: CC BY 4.0, re-checked today (see `docs/data_sources.md`). A hosted demo is allowed with
   attribution, a license link and a note of changes. It is not proposed until the author decides.
+
+## Phase 7: serving and dashboard (2026-11-12)
+
+### D-046: Uncertainty shown as a past-error range, not a confidence band
+- **What the band is:** for each past test year in blocks A and B (2014–2020 entrants), the hazard
+  multipliers (c_op, c_wd) that would have made the primary configuration's average 3-year prediction
+  match what happened (same solver as protocol section 7). A new project's curves are redrawn with each
+  year's multipliers, and the band is their envelope. Withdrawal multipliers: 0.50–0.91. Operation:
+  0.11–1.16 (`reports/past_error_range.json`, `make error-range`).
+- **Why not tree spread:** the spread of the forest's trees measures how much the trees disagree, not how
+  wrong the model has been. Phase 5 showed the dominant error is a level (calibration) error that shifts
+  over time, which tree spread cannot see.
+- **Why not a bootstrap interval:** refitting the forest 200+ times is slow, and like tree spread it
+  measures sampling noise, not drift between eras.
+- **Consequence:** in every past year fewer projects withdrew than predicted, so the withdrawal band sits
+  entirely below the model line. The dashboard says so instead of hiding it.
+- **Limits, shown in the app:** 7 years of evidence; not a confidence interval; does not cover errors
+  larger than the worst past year; multipliers fitted at 36 months are applied to the whole curve.
+- **Block C is not used,** so the final test stays report-only.
+
+### D-047: What a user can enter
+- ISO (the four in scope), state (only states with at least 20 in-scope projects in that ISO), county
+  (counties seen in the LBNL data for that state, or "not specified"), technology (solar, wind, battery,
+  gas, other), "paired with storage", and capacity (> 0 and at most the largest training project,
+  3,576 MW, because a forest cannot extrapolate).
+- **Storage and hybrid flags follow the data:** battery means storage and not hybrid; any other fuel with
+  storage means storage and hybrid; otherwise neither. Rarer combinations (62 of 14,796 rows, such as a
+  solar + wind hybrid without storage) are not offered.
+- **Entry date is fixed** at 2026-01-01, the day after the data cutoff. Congestion features count what was
+  in the queue before that date.
+- **County default** is the county with the most past requests in the state. "Not specified" is treated
+  like past projects whose county LBNL did not record, which itself moves the prediction (about +4 points
+  of withdrawal in the example checked), so it is not the default.
+
+### D-048: One service layer for the API and the dashboard
+- `queueiq.service` builds the features for a hypothetical project by adding it as one row to its state's
+  queue history and running the **same** `build_features` code as training. A test confirms that 1,486
+  real projects re-entered this way get exactly their training features (0 mismatches), including rows
+  that share a county FIPS code but list another state.
+- The dashboard loads the model directly (as the spec asks). FastAPI is a thin layer with `/health`,
+  `/options`, `/context`, `/predict` (optional explanation) and `/compare` (up to 5).
+- Out-of-range input returns 422 with a list of plain-language problems. A missing model returns 503 from
+  `/health` with the command that fixes it.
+- `make train` now also fits the deployment model (`queueiq.service.build`), using only the processed data
+  and committed Phase 5 outputs, so a clean clone needs `make data && make train` only.
+
+### D-049: Expected months in the queue, not a median wait
+- The median time to operation is undefined for most projects (their chance of operation never reaches
+  50%). The summary instead shows the **expected months still in the queue during the first 60 months**
+  (area under the still-waiting curve, trapezoid rule on the monthly grid), which is always defined and is
+  inside the evaluated horizon.
+
+### D-050: Docker image and dependency groups
+- **Dependency groups:** runtime dependencies (what serving needs) are the project dependencies. The
+  training stack (LightGBM, MLflow, openpyxl) moved to a `pipeline` group and test tools to `dev`. Both are
+  installed by `make setup`. The image installs runtime only.
+- **Two-stage build:** `ecos` (a scikit-survival dependency) has no prebuilt wheel for Linux on Apple
+  silicon, so it is compiled in a build stage. The final image is about 1.25 GB, has no compiler, and runs
+  as a non-root user.
+- **Mounted, not copied:** `models/` and `data/processed/` are mounted read-only (D-045).
+- **Memory:** the deployed forests use about 1.1 GB per process on Linux. API and dashboard together peak
+  at about 2.5 GB. `MALLOC_ARENA_MAX=2` and scoring the 8,192 Shapley rows in chunks of 1,024 (identical
+  results) keep the dashboard within that. A 3 GB Docker VM was enough in testing; 4 GB gives headroom.
+- **Why tab is lazy:** the explanation (about 1 s) is computed only while its tab is open.

@@ -70,3 +70,17 @@ def apply_matplotlib_style() -> None:
             "savefig.dpi": 150,
         }
     )
+
+
+# Dashboard (Phase 7). .streamlit/config.toml repeats these; tests/test_app.py keeps them in sync.
+# The accent is for controls only: blue and orange stay reserved for the two outcomes.
+UI = {
+    "paper": "#F6F7F5",
+    "panel": "#ECEFEC",
+    "ink": "#1E2522",
+    "muted": "#5C6762",
+    "rule": "#D8DDDA",
+    "accent": "#0E6B66",
+}
+UI_FONT = "Public Sans"
+UI_FONT_SIZES = {"body": 14, "section": 18, "figure": 28}  # px; no other sizes in the app

@@ -1,0 +1,47 @@
+/* The only custom CSS in the app. Colors and sizes match queueiq.style.UI / UI_FONT_SIZES. */
+:root {
+  --qi-ink: #1E2522;
+  --qi-muted: #5C6762;
+  --qi-rule: #D8DDDA;
+  --qi-panel: #ECEFEC;
+  --qi-operational: #2a78d6;
+  --qi-withdrawn: #eb6834;
+}
+
+.block-container { padding-top: 2rem; max-width: 1360px; }
+
+.qi-mark { font-size: 18px; font-weight: 600; margin: 0; }
+.qi-sub { color: var(--qi-muted); margin: 0 0 1rem; }
+.qi-muted { color: var(--qi-muted); }
+
+.qi-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+  margin: 8px 0 16px;
+}
+.qi-stat { border-top: 2px solid var(--qi-ink); padding-top: 8px; }
+.qi-stat.qi-withdrawn { border-top-color: var(--qi-withdrawn); }
+.qi-stat.qi-operational { border-top-color: var(--qi-operational); }
+.qi-stat-label, .qi-stat-range { color: var(--qi-muted); }
+.qi-nowrap { white-space: nowrap; }
+.qi-stat-value { font-size: 28px; font-weight: 600; line-height: 1.25; font-variant-numeric: tabular-nums; }
+
+.qi-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--qi-muted); margin: 4px 0 0; }
+.qi-key { display: inline-block; width: 16px; height: 2px; vertical-align: middle; margin-right: 6px; }
+.qi-key.qi-band { height: 10px; opacity: 0.3; }
+.qi-key.qi-ring { width: 9px; height: 9px; border: 1.5px solid var(--qi-ink); border-radius: 50%; }
+.qi-key.qi-unchecked { height: 10px; background: var(--qi-panel); }
+
+.qi-caution {
+  border-left: 2px solid var(--qi-ink);
+  padding: 4px 0 4px 12px;
+  margin: 8px 0 16px;
+  max-width: 80ch;
+}
+.qi-prose { max-width: 80ch; }
+
+@media (max-width: 720px) {
+  .block-container { padding-left: 16px; padding-right: 16px; padding-top: 1rem; }
+  .qi-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+}

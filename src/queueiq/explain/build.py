@@ -9,7 +9,6 @@
 """
 
 import json
-import time
 
 import joblib
 import matplotlib.pyplot as plt
@@ -24,14 +23,8 @@ from queueiq.explain import deploy
 from queueiq.explain import figures as F
 from queueiq.explain.groups import GROUPS, TARGETS
 from queueiq.explain.permutation import grouped_permutation_importance
-from queueiq.explain.reference import (
-    calibration_warning,
-    calibration_warning_values,
-    observed_reference,
-)
 from queueiq.explain.shapley import explain
 from queueiq.explain.text import narrative
-from queueiq.models.cox import CauseSpecificCox
 from queueiq.models.data import make_split
 
 ENTRIES_FILE = config.PROCESSED_DIR / "queue_entries.parquet"
@@ -62,37 +55,10 @@ def main() -> None:
 
     # 1. Deployment model ------------------------------------------------------------------
     print("Fitting the deployment model on all in-scope data ...")
-    X, t, ev, ids = deploy.deployment_data(entries, features)
-    start = time.perf_counter()
-    model = deploy.primary_model(selection).fit(X, t, ev)
-    fit_s = round(time.perf_counter() - start, 1)
-    cox = CauseSpecificCox(exclude=model.exclude).fit(X, t, ev)
-    background = deploy.background_sample(X)
-    deploy.DEPLOY_DIR.mkdir(exist_ok=True)
-    joblib.dump(model, deploy.MODEL_FILE, compress=3)
-    joblib.dump(cox, deploy.COX_FILE, compress=3)
-    background.to_parquet(deploy.BACKGROUND_FILE, index=False)
-    reference = observed_reference(entries, pd.Timestamp(config.DATA_CUTOFF))
-    cal = calibration_warning_values(
-        pd.read_csv(config.REPORTS_DIR / "evaluation_metrics.csv"), primary
-    )
-    warning = calibration_warning(cal)
-    meta = {
-        "primary_configuration": primary,
-        "trained_on_rows": len(X),
-        "events": {
-            "censored": int((ev == 0).sum()),
-            "operational": int((ev == 1).sum()),
-            "withdrawn": int((ev == 2).sum()),
-        },
-        "outcomes_as_of": str(config.DATA_CUTOFF),
-        "background_years": list(deploy.BACKGROUND_YEARS),
-        "background_size": len(background),
-        "observed_reference": reference,
-        "phase5_final_test_calibration": cal,
-        "calibration_warning": warning,
-    }
-    deploy.META_FILE.write_text(json.dumps(meta, indent=2) + "\n")
+    built = deploy.build(entries, features, selection)
+    model, cox, background, meta = built["model"], built["cox"], built["background"], built["meta"]
+    X, ids, fit_s = built["X"], built["ids"], built["fit_seconds"]
+    reference, warning = meta["observed_reference"], meta["calibration_warning"]
 
     # 2 + 3a. Reproducibility and permutation importance on Phase 5 test cohorts -------------
     perm, repro = {}, []

@@ -57,3 +57,19 @@ def solve_scaling(
                 lo, hi = (mid, hi) if mean_pred < observed[k] else (lo, mid)
             c[k] = float(np.exp((lo + hi) / 2))
     return c
+
+
+def past_error_band(
+    cif: dict[str, np.ndarray], multipliers: list[dict[str, float]]
+) -> dict[str, np.ndarray]:
+    """Pointwise min and max over curves redrawn with each past year's multipliers
+    (decisions D-046; the multipliers come from evaluation/error_range.py).
+
+    cif: {outcome: (n, months)}. Returns {f"{outcome}_low"/"_high": (n, months)}.
+    """
+    redrawn = [apply_scaling(cif, c) for c in multipliers]
+    out = {}
+    for k in CAUSE_KEYS:
+        stack = np.stack([r[k] for r in redrawn])
+        out[f"{k}_low"], out[f"{k}_high"] = stack.min(axis=0), stack.max(axis=0)
+    return out

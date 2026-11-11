@@ -1,0 +1,126 @@
+{
+  "primary_configuration": "rsf_cause_specific|qy=0|recal=0",
+  "horizon_months": 36,
+  "blocks_used": "A (2014-2017) and B (2018-2020); block C (final test) not used",
+  "origins": [
+    {
+      "block": "A",
+      "origin": 2014,
+      "n": 447,
+      "predicted": {
+        "operational": 0.12171737849712372,
+        "withdrawn": 0.6478903293609619
+      },
+      "observed": {
+        "operational": 0.14541387024608501,
+        "withdrawn": 0.6085011185682326
+      },
+      "multiplier": {
+        "operational": 1.1561458156430744,
+        "withdrawn": 0.9105611483109791
+      }
+    },
+    {
+      "block": "A",
+      "origin": 2015,
+      "n": 631,
+      "predicted": {
+        "operational": 0.10563638806343079,
+        "withdrawn": 0.6258925199508667
+      },
+      "observed": {
+        "operational": 0.06973058637083994,
+        "withdrawn": 0.5340729001584786
+      },
+      "multiplier": {
+        "operational": 0.5288560698398563,
+        "withdrawn": 0.7394988865055413
+      }
+    },
+    {
+      "block": "A",
+      "origin": 2016,
+      "n": 901,
+      "predicted": {
+        "operational": 0.10584862530231476,
+        "withdrawn": 0.6511562466621399
+      },
+      "observed": {
+        "operational": 0.048834628190899,
+        "withdrawn": 0.5638179800221975
+      },
+      "multiplier": {
+        "operational": 0.3512256941605649,
+        "withdrawn": 0.7415264488746963
+      }
+    },
+    {
+      "block": "A",
+      "origin": 2017,
+      "n": 864,
+      "predicted": {
+        "operational": 0.10024453699588776,
+        "withdrawn": 0.614554226398468
+      },
+      "observed": {
+        "operational": 0.028935185185185185,
+        "withdrawn": 0.44907407407407407
+      },
+      "multiplier": {
+        "operational": 0.19661128689594054,
+        "withdrawn": 0.5917281179153494
+      }
+    },
+    {
+      "block": "B",
+      "origin": 2018,
+      "n": 896,
+      "predicted": {
+        "operational": 0.0765073150396347,
+        "withdrawn": 0.627142608165741
+      },
+      "observed": {
+        "operational": 0.026785714285714284,
+        "withdrawn": 0.5089285714285714
+      },
+      "multiplier": {
+        "operational": 0.26211067694382967,
+        "withdrawn": 0.6933048842491032
+      }
+    },
+    {
+      "block": "B",
+      "origin": 2019,
+      "n": 1185,
+      "predicted": {
+        "operational": 0.0647747814655304,
+        "withdrawn": 0.6199876070022583
+      },
+      "observed": {
+        "operational": 0.026160337552742614,
+        "withdrawn": 0.3957805907172996
+      },
+      "multiplier": {
+        "operational": 0.26913187890781054,
+        "withdrawn": 0.5028198027867438
+      }
+    },
+    {
+      "block": "B",
+      "origin": 2020,
+      "n": 1435,
+      "predicted": {
+        "operational": 0.060794174671173096,
+        "withdrawn": 0.5657255053520203
+      },
+      "observed": {
+        "operational": 0.00975609756097561,
+        "withdrawn": 0.3790940766550523
+      },
+      "multiplier": {
+        "operational": 0.11335326232864486,
+        "withdrawn": 0.5534299239164585
+      }
+    }
+  ]
+}

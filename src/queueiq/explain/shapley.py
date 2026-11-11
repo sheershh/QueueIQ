@@ -48,8 +48,19 @@ def shapley_from_values(v: np.ndarray, n: int) -> np.ndarray:
     return phi
 
 
+def predict_in_chunks(predict: Predict, frame: pd.DataFrame, chunk: int) -> dict[str, np.ndarray]:
+    """Same result as predict(frame), scored `chunk` rows at a time to cap peak memory (the
+    dashboard container would otherwise need ~0.5 GB extra for one explanation)."""
+    parts = [predict(frame.iloc[i : i + chunk]) for i in range(0, len(frame), chunk)]
+    return {k: np.concatenate([np.asarray(p[k]) for p in parts]) for k in parts[0]}
+
+
 def explain(
-    predict: Predict, x: pd.DataFrame, background: pd.DataFrame, groups: dict[str, list[str]]
+    predict: Predict,
+    x: pd.DataFrame,
+    background: pd.DataFrame,
+    groups: dict[str, list[str]],
+    chunk: int = 1024,
 ) -> pd.DataFrame:
     """Shapley values per group and target for one project (x: one-row frame).
 
@@ -58,7 +69,7 @@ def explain(
     """
     names, cols = list(groups), list(groups.values())
     frame, masks = coalition_frame(x, background, cols)
-    out = predict(frame)
+    out = predict_in_chunks(predict, frame, chunk)
     result = {}
     prediction, baseline = {}, {}
     for target, values in out.items():

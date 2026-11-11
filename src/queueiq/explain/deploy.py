@@ -7,6 +7,7 @@ are the evidence for it.
 """
 
 import json
+import time
 from dataclasses import dataclass
 
 import joblib
@@ -15,6 +16,11 @@ import pandas as pd
 
 from queueiq import config
 from queueiq.explain.groups import TARGETS
+from queueiq.explain.reference import (
+    calibration_warning,
+    calibration_warning_values,
+    observed_reference,
+)
 from queueiq.models.cox import CauseSpecificCox
 from queueiq.models.data import MODEL_FEATURES, make_split
 from queueiq.models.rsf import CauseSpecificRSF
@@ -25,6 +31,8 @@ MODEL_FILE = DEPLOY_DIR / "deploy_primary.joblib"
 COX_FILE = DEPLOY_DIR / "deploy_cox_reference.joblib"
 BACKGROUND_FILE = DEPLOY_DIR / "deploy_background.parquet"
 META_FILE = DEPLOY_DIR / "deploy_meta.json"
+RANGE_FILE = config.REPORTS_DIR / "past_error_range.json"  # from `make error-range` (committed)
+METRICS_FILE = config.REPORTS_DIR / "evaluation_metrics.csv"  # Phase 5 results (committed)
 BACKGROUND_YEARS = (2021, 2025)  # "typical recent project" for explanations
 BACKGROUND_SIZE = 64
 
@@ -63,6 +71,53 @@ def predictor(model):
         return {t: cif[k][:, h - 1] for t, (k, h, _) in TARGETS.items()}
 
     return predict
+
+
+def build(entries: pd.DataFrame, features: pd.DataFrame, selection: dict) -> dict:
+    """Fit and save the deployment model, the Cox reference, the explanation background and the
+    metadata the dashboard shows. Needs only the processed data and committed reports."""
+    primary = selection["primary_configuration"]
+    X, t, ev, ids = deployment_data(entries, features)
+    start = time.perf_counter()
+    model = primary_model(selection).fit(X, t, ev)
+    fit_s = round(time.perf_counter() - start, 1)
+    cox = CauseSpecificCox(exclude=model.exclude).fit(X, t, ev)
+    background = background_sample(X)
+    DEPLOY_DIR.mkdir(exist_ok=True)
+    joblib.dump(model, MODEL_FILE, compress=3)
+    joblib.dump(cox, COX_FILE, compress=3)
+    background.to_parquet(BACKGROUND_FILE, index=False)
+    cal = calibration_warning_values(pd.read_csv(METRICS_FILE), primary)
+    past = json.loads(RANGE_FILE.read_text())
+    if past["primary_configuration"] != primary:
+        raise ValueError("past_error_range.json was built for a different primary configuration")
+    meta = {
+        "primary_configuration": primary,
+        "trained_on_rows": len(X),
+        "events": {
+            "censored": int((ev == 0).sum()),
+            "operational": int((ev == 1).sum()),
+            "withdrawn": int((ev == 2).sum()),
+        },
+        "outcomes_as_of": str(config.DATA_CUTOFF),
+        "entry_date": str(DEPLOY_ORIGIN.date()),
+        "background_years": list(BACKGROUND_YEARS),
+        "background_size": len(background),
+        "observed_reference": observed_reference(entries, pd.Timestamp(config.DATA_CUTOFF)),
+        "phase5_final_test_calibration": cal,
+        "calibration_warning": calibration_warning(cal),
+        "past_error_range": past,
+    }
+    META_FILE.write_text(json.dumps(meta, indent=2) + "\n")
+    return {
+        "model": model,
+        "cox": cox,
+        "background": background,
+        "meta": meta,
+        "X": X,
+        "ids": ids,
+        "fit_seconds": fit_s,
+    }
 
 
 @dataclass

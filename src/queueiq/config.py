@@ -4,11 +4,13 @@ Every module should import paths and the random seed from here instead of
 hard-coding them, so the whole pipeline can be moved or re-seeded in one place.
 """
 
+import os
 from datetime import date
 from pathlib import Path
 
-# src/queueiq/config.py -> parents[2] is the repository root.
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# src/queueiq/config.py -> parents[2] is the repository root. The Docker image installs the
+# package into site-packages, so it sets QUEUEIQ_ROOT=/app instead.
+PROJECT_ROOT = Path(os.environ.get("QUEUEIQ_ROOT") or Path(__file__).resolve().parents[2])
 
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"

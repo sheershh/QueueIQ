@@ -4,19 +4,20 @@ version = "0.1.0"
 description = "Survival and competing-risks models for US grid interconnection queue outcomes."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-# Runtime dependencies are added phase by phase (`uv add <pkg>`), so each one
-# arrives with the code that needs it. Exact versions live in uv.lock.
+# Runtime dependencies: what the API and dashboard need to load and serve the trained model
+# (this is all the Docker image installs). Exact versions live in uv.lock.
 dependencies = [
+    "fastapi>=0.162.4",
     "joblib>=1.6.0",
     "lifelines>=0.30.0",
-    "lightgbm>=4.7.0",
     "matplotlib>=3.11.2",
-    "mlflow>=3.18.0",
-    "openpyxl>=3.1.5",
     "pandas>=3.1.1",
     "pyarrow>=26.0.1",
+    "pydantic>=2.14.3",
     "scikit-learn>=1.9.1",
     "scikit-survival>=0.28.0",
+    "streamlit>=1.67.0",
+    "uvicorn>=0.54.0",
 ]
 
 [dependency-groups]
@@ -25,7 +26,19 @@ dev = [
     "pytest-cov>=5",
     "ruff>=0.6",
     "pre-commit>=3.7",
+    "httpx>=0.28.1",
+    "playwright>=1.65.0",
 ]
+# Rebuilding the data and training/evaluating every model (make data/train/evaluate).
+pipeline = [
+    "lightgbm>=4.7.0",
+    "mlflow>=3.18.0",
+    "openpyxl>=3.1.5",
+]
+
+[tool.uv]
+# A plain `uv sync` (make setup) installs everything; Docker uses --no-default-groups.
+default-groups = ["dev", "pipeline"]
 
 [build-system]
 requires = ["hatchling"]

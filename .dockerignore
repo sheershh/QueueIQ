@@ -1,0 +1,9 @@
+# Allow-list: the build context holds only what the image needs. Data, models, docs, tests and
+# every local-only file stay out.
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!src/
+!.streamlit/
+**/__pycache__

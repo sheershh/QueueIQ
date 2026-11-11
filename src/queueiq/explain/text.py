@@ -7,6 +7,25 @@ from queueiq.explain.groups import TARGETS, describe
 MIN_POINTS = 0.5  # contributions smaller than half a percentage point are not mentioned
 
 
+def drivers(table: pd.DataFrame, row: pd.Series, top: int = 3) -> dict[str, str]:
+    """Per target: 'Pushing it up: ...; Pulling it down: ...' (the groups that move it most)."""
+    out = {}
+    for target in TARGETS:
+        contrib = (table[target] * 100).sort_values(key=abs, ascending=False)
+        contrib = contrib[contrib.abs() >= MIN_POINTS].head(top)
+        up = [f"{g} ({v:+.1f} points: {describe(g, row)})" for g, v in contrib.items() if v > 0]
+        down = [f"{g} ({v:+.1f} points: {describe(g, row)})" for g, v in contrib.items() if v < 0]
+        parts = []
+        if up:
+            parts.append("Pushing it up: " + "; ".join(up) + ".")
+        if down:
+            parts.append("Pulling it down: " + "; ".join(down) + ".")
+        if not up and not down:
+            parts.append("No feature group moves it by half a point or more.")
+        out[target] = " ".join(parts)
+    return out
+
+
 def narrative(table: pd.DataFrame, row: pd.Series, reference: dict, top: int = 3) -> dict[str, str]:
     """One sentence block per target, e.g.
     'Chance of withdrawing within 3 years: 81.1%. Model's average prediction for recent entrants:
@@ -15,24 +34,16 @@ def narrative(table: pd.DataFrame, row: pd.Series, reference: dict, top: int = 3
     reference[target] = {"cohort": year, "observed": share} (see explain/reference.py).
     """
     texts = {}
+    moves = drivers(table, row, top)
     for target, (_, h, label) in TARGETS.items():
         p, base = table.attrs["prediction"][target], table.attrs["baseline"][target]
         ref = reference[target]
-        contrib = (table[target] * 100).sort_values(key=abs, ascending=False)
-        contrib = contrib[contrib.abs() >= MIN_POINTS].head(top)
-        up = [f"{g} ({v:+.1f} points: {describe(g, row)})" for g, v in contrib.items() if v > 0]
-        down = [f"{g} ({v:+.1f} points: {describe(g, row)})" for g, v in contrib.items() if v < 0]
         parts = [
             f"{label}: {100 * p:.1f}%.",
             f"Model's average prediction for recent entrants: {100 * base:.1f}%; observed for "
             f"{ref['cohort']} entrants (latest with full {h // 12}-year follow-up): "
             f"{100 * ref['observed']:.1f}%.",
+            moves[target],
         ]
-        if up:
-            parts.append("Pushing it up: " + "; ".join(up) + ".")
-        if down:
-            parts.append("Pulling it down: " + "; ".join(down) + ".")
-        if not up and not down:
-            parts.append("No feature group moves it by half a point or more.")
         texts[target] = " ".join(parts)
     return texts

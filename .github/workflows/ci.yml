@@ -17,3 +17,25 @@ jobs:
         run: make lint
       - name: Test
         run: make test
+
+  docker:
+    # The image has no model or data (they are mounted at run time), so CI checks that both
+    # services start and that the API reports the missing model clearly instead of crashing.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Build image
+        run: docker build -t queueiq:ci .
+      - name: API starts and explains what is missing
+        run: |
+          docker run -d --name api -p 8000:8000 queueiq:ci
+          for i in $(seq 1 30); do curl -s localhost:8000/health > health.json && break; sleep 2; done
+          cat health.json
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8000/health)" = "503"
+          grep -q "make data && make train" health.json
+      - name: Dashboard starts
+        run: |
+          docker run -d --name app -p 8501:8501 queueiq:ci \
+            streamlit run src/queueiq/app/main.py --server.port 8501 --server.address 0.0.0.0
+          for i in $(seq 1 30); do curl -sf localhost:8501/_stcore/health && exit 0; sleep 2; done
+          docker logs app; exit 1

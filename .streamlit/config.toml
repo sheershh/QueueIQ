@@ -1,0 +1,23 @@
+# Dashboard theme. Colors repeat queueiq.style.UI (tests/test_app.py keeps them in sync).
+[theme]
+base = "light"
+primaryColor = "#0E6B66"
+backgroundColor = "#F6F7F5"
+secondaryBackgroundColor = "#ECEFEC"
+textColor = "#1E2522"
+linkColor = "#0E6B66"
+borderColor = "#D8DDDA"
+font = "Public Sans:https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600&display=swap, sans-serif"
+baseFontSize = 14
+headingFontSizes = ["28px", "18px", "18px", "14px", "14px", "14px"]
+headingFontWeights = [600, 600, 600, 600, 600, 600]
+baseRadius = "small"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"

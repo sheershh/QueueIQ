@@ -1,0 +1,30 @@
+# `make data && make train` first: they create data/processed/ and models/ on the host.
+# Then `docker compose up` serves the dashboard on http://localhost:8501 and the API on
+# http://localhost:8000 (interactive docs at /docs). Both mount the same files read-only.
+x-queueiq: &queueiq
+  build: .
+  volumes:
+    - ./models:/app/models:ro
+    - ./data/processed:/app/data/processed:ro
+  restart: unless-stopped
+
+services:
+  api:
+    <<: *queueiq
+    command: ["uvicorn", "queueiq.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  app:
+    <<: *queueiq
+    command: ["streamlit", "run", "src/queueiq/app/main.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
+    ports: ["8501:8501"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
