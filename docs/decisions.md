@@ -279,3 +279,89 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
 - **No look at outcomes during feature design:** feature-versus-outcome relationships were not examined
   on the full dataset. That analysis happens in Phase 4 on training folds only, so test-period outcomes
   can't influence which features are chosen.
+
+## Phase 4: Modeling (2026-11-11)
+
+### D-027: One time-based split for every model
+- **Training:** in-scope projects that entered before **2018-01-01**, with outcomes **cut off at that date**.
+  An event dated on or after 2018-01-01 counts as censored at 2018-01-01. This is exactly what was knowable
+  on the origin date. Without the cutoff, shocks after 2018 (such as later mass withdrawals) would reach the
+  training labels.
+- **Test:** projects that entered in **2018–2020**, with outcomes observed to the data cutoff. Every one of
+  them has at least 5 years of follow-up, so 3- and 5-year metrics need no censoring correction. Two test
+  projects that entered on 2020-12-31 are dropped and the count is reported. They were still active after
+  5 calendar years, but that is 59.99 average-length months, and the horizon check stays strict.
+- **Not tested here:** 2021+ entrants (too little follow-up for 5 years). Phase 5's rolling-origin
+  backtest covers them at 3 years.
+- **Time unit:** month index, where month m covers [m−1, m) months after entry. Predictions are on months
+  1–96.
+
+### D-028: Preprocessing is fitted on training rows only
+- States with fewer than 50 training rows, and any state not seen in training, become `other`.
+- **Cox ("linear" mode):**
+  - log1p on counts and MW, then standardize with the training mean and standard deviation;
+  - missing values become the training median plus a 0/1 indicator;
+  - one-hot categories with the first level as the reference;
+  - redundant columns are dropped: constants, and 0/1 columns that duplicate or mirror an earlier one. In
+    the real data this drops 6 missing-indicators that equal `1 − county_known` (or each other) and
+    `iso=other`. Without this step the Cox fit was singular.
+- **Random survival forest ("tree" mode):** the same filling and indicators, all levels one-hot, no scaling.
+- **LightGBM:** native categories and native handling of missing values.
+
+### D-029: Cause-specific Cox and cause-specific random survival forest
+- **Decision:** One model per outcome, with the other outcome treated as censored. Each model gives a
+  per-project cumulative hazard, and `combine.py` turns the pair into cumulative incidence with the same
+  product-limit formula as Aalen-Johansen, so S + CIF_op + CIF_wd = 1.
+- **Why:** Cause-specific hazards are the standard way to build competing-risks curves from single-event
+  models. lifelines and scikit-survival both fit single-event models only.
+- **Alternative:** Fine-Gray subdistribution hazards. It models the CIF directly, but neither library
+  implements it, and coefficients are harder to interpret.
+- **Settings (fixed, not tuned on test):**
+  - Cox: ridge penalty 0.1, because the congestion features are correlated.
+  - Forest: 300 trees, `min_samples_leaf = 20`, `max_features = "sqrt"`, seed 42.
+- **Proportional-hazards check:** 4 of 49 covariates for operation and 3 of 49 for withdrawal have
+  p < 0.05. The largest are log capacity (operation), `iso=MISO` and `queue_year` (withdrawal). With
+  thousands of rows this test is very sensitive, so the Cox effects are read as averages over time.
+
+### D-030: Discrete-time LightGBM
+- **Person-period data:** one row per project per 3-month interval, labelled 0 (nothing), 1 (operational)
+  or 2 (withdrawn). The interval number is a feature. Predicted class probabilities are discrete hazards,
+  combined into CIFs with the product-limit formula.
+- **Censoring convention:** a project censored part-way through an interval contributes only the intervals
+  it was observed for in full.
+- **Rounds:** chosen by early stopping on an inner split inside the training data (train on entrants before
+  2016-01-01, validate on 2016–2017 entrants with outcomes cut off at 2018-01-01). The result was 31 rounds.
+  The test cohorts were never used.
+- **Fixed settings:** learning rate 0.05, 15 leaves, 200 minimum rows per leaf, feature and bagging fraction
+  0.8, L2 penalty 1.0, deterministic, seed 42.
+
+### D-031: Phase 4 metrics, and the transfer diagnostics
+- **Metrics:** for each outcome at 3 and 5 years, on test cohorts with complete follow-up: AUC (ranking),
+  Brier score (squared error), and mean predicted vs observed rate (calibration-in-the-large). The
+  C-index, integrated Brier score, calibration curves and bootstrap intervals come in Phase 5.
+- **Transfer diagnostic:** AUC on the training cohorts (in-sample) against AUC on the test cohorts, plus
+  the observed 3-year rates by ISO in each. This separates a regime shift from ordinary overfitting.
+- **Pitfall caught while building it:** a first version kept training rows "followed to 3 years" one row at
+  a time. That keeps recent projects only if they had an event early, which is selection on the outcome.
+  The fix uses whole entry years with full follow-up before the origin (2010–2014).
+- **Commitment:** the diagnostics were computed after all model settings were fixed. Nothing was changed
+  to improve test results.
+
+### D-032: Tooling
+- **MLflow:** version 3.18 refuses the plain-folder tracking store, so runs go to a local SQLite file
+  (`mlruns/mlflow.db`) with artifacts in `mlruns/artifacts`. It is still local with no server, and it is
+  gitignored. View it with `uv run mlflow ui --backend-store-uri sqlite:///mlruns/mlflow.db`.
+- **Fitted models:** saved to `models/*.joblib` (gitignored) for Phases 5–7.
+- **macOS:** LightGBM needs the OpenMP runtime: `brew install libomp`. Linux CI already has it.
+
+### Phase 4 results in brief (from `reports/model_comparison.md`)
+- **Operational:** all three models rank projects well above the baseline. 3-year AUC is 0.81–0.86 against
+  0.72 for the baseline, and 5-year AUC is 0.70–0.74 against 0.63. But every model overpredicts the level
+  (about 7–8% predicted against 2.0% observed at 3 years), because completion fell after the training years.
+- **Withdrawn:** test AUC is about 0.49–0.54, close to chance, even though the models rank withdrawals in
+  the training cohorts (in-sample 0.64–0.80). At 3 years the ISO × fuel baseline (0.575) ranks
+  withdrawals better than any model. Observed 3-year withdrawal fell between 2010–14 and 2018–20
+  entrants in every ISO (for example SPP 59% to 22%, PJM 58% to 38%). Withdrawal timing changed across
+  eras and the models can't see that from the features.
+- **Next:** Phase 5 measures how stable this is across many origins (rolling-origin backtest), with
+  confidence intervals and the planned ablations, including with and without `queue_year`.

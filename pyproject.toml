@@ -7,10 +7,16 @@ requires-python = ">=3.12,<3.13"
 # Runtime dependencies are added phase by phase (`uv add <pkg>`), so each one
 # arrives with the code that needs it. Exact versions live in uv.lock.
 dependencies = [
+    "joblib>=1.6.0",
+    "lifelines>=0.30.0",
+    "lightgbm>=4.7.0",
     "matplotlib>=3.11.2",
+    "mlflow>=3.18.0",
     "openpyxl>=3.1.5",
     "pandas>=3.1.1",
     "pyarrow>=26.0.1",
+    "scikit-learn>=1.9.1",
+    "scikit-survival>=0.28.0",
 ]
 
 [dependency-groups]

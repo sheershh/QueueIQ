@@ -1,0 +1,17 @@
+model,event,horizon_years,n,events,observed_%,mean_pred_%,auc,brier
+baseline_aj_iso_fuel,operational,3,3516,69,1.96,8.62,0.715,0.0247
+cox_cause_specific,operational,3,3516,69,1.96,8.05,0.843,0.0216
+lgbm_discrete_time,operational,3,3516,69,1.96,8.14,0.862,0.0217
+rsf_cause_specific,operational,3,3516,69,1.96,7.26,0.807,0.0216
+baseline_aj_iso_fuel,operational,5,3516,145,4.12,12.6,0.629,0.048
+cox_cause_specific,operational,5,3516,145,4.12,14.4,0.701,0.0487
+lgbm_discrete_time,operational,5,3516,145,4.12,11.66,0.744,0.0432
+rsf_cause_specific,operational,5,3516,145,4.12,11.73,0.719,0.0443
+baseline_aj_iso_fuel,withdrawn,3,3516,1469,41.78,64.25,0.575,0.2943
+cox_cause_specific,withdrawn,3,3516,1469,41.78,54.66,0.535,0.2682
+lgbm_discrete_time,withdrawn,3,3516,1469,41.78,63.04,0.534,0.2946
+rsf_cause_specific,withdrawn,3,3516,1469,41.78,59.7,0.488,0.2846
+baseline_aj_iso_fuel,withdrawn,5,3516,2165,61.58,75.18,0.486,0.2665
+cox_cause_specific,withdrawn,5,3516,2165,61.58,62.99,0.49,0.2543
+lgbm_discrete_time,withdrawn,5,3516,2165,61.58,74.71,0.505,0.2629
+rsf_cause_specific,withdrawn,5,3516,2165,61.58,65.96,0.525,0.2435

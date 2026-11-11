@@ -16,9 +16,10 @@ dist/
 htmlcov/
 .ipynb_checkpoints/
 
-# Experiment tracking (local MLflow file store)
+# Experiment tracking (local MLflow: SQLite + artifacts) and saved models
 mlruns/
 mlartifacts/
+/models/
 
 # OS / editor
 .DS_Store

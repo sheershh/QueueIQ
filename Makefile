@@ -1,5 +1,5 @@
 # Every pipeline step is a make target. Later phases add: data, features, train, evaluate, app.
-.PHONY: help setup data eda features lint format test check clean
+.PHONY: help setup data eda features train lint format test check clean
 
 UV ?= uv
 
@@ -19,6 +19,9 @@ eda:  ## Exploratory analysis: reports/eda.md + reports/figures/ (needs make dat
 
 features:  ## Leakage-safe feature table: data/processed/features.parquet + reports/features.md
 	$(UV) run python -m queueiq.features.build
+
+train:  ## Fit all models on the time split; reports/model_comparison.md (+ MLflow in mlruns/)
+	$(UV) run python -m queueiq.models.train
 
 lint:  ## Check lint and formatting (no changes made)
 	$(UV) run ruff check .

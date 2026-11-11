@@ -4,7 +4,7 @@ Survival and competing-risks models that estimate whether a proposed US energy p
 interconnection queue reaches commercial operation or withdraws, and how long that takes.
 Data: Lawrence Berkeley National Laboratory "Queued Up" dataset.
 
-**Status:** Phase 3 (leakage-safe features) complete. No models yet.
+**Status:** Phase 4 (survival and competing-risks models) complete. Rigorous evaluation (Phase 5) next.
 
 ## Roadmap
 0. Setup: environment, lint, tests, CI
@@ -20,6 +20,7 @@ Data: Lawrence Berkeley National Laboratory "Queued Up" dataset.
 ## Quick start
 
 Requires [uv](https://docs.astral.sh/uv/) and `make`. uv installs the pinned Python version (3.12) itself.
+On macOS, LightGBM also needs the OpenMP runtime: `brew install libomp`.
 
 ```bash
 make setup   # install pinned dependencies + git hooks
@@ -28,6 +29,7 @@ make lint    # lint and format checks
 make data    # verify the raw LBNL file and build the processed dataset
 make eda     # exploratory analysis: reports/eda.md + figures
 make features  # leakage-safe feature table + reports/features.md
+make train   # fit all models on the time split + reports/model_comparison.md
 make help    # list all targets
 ```
 
@@ -48,4 +50,5 @@ Lawrence Berkeley National Laboratory & GridTracker. CC BY 4.0.*
 - [reports/data_quality.md](reports/data_quality.md): generated data-quality report and cleaning waterfall
 - [reports/eda.md](reports/eda.md): exploratory analysis (censoring-aware outcome curves, cohorts, cross-check with LBNL)
 - [reports/features.md](reports/features.md): feature definitions, coverage, and known gaps
+- [reports/model_comparison.md](reports/model_comparison.md): all models on one time-based split, with transfer diagnostics
 - [docs/model_card.md](docs/model_card.md): model documentation (TBD, Phase 5)
