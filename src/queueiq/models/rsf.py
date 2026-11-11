@@ -18,13 +18,20 @@ from queueiq.models.preprocess import Preprocessor
 class CauseSpecificRSF(CompetingRisksModel):
     name = "rsf_cause_specific"
 
-    def __init__(self, n_estimators: int = 300, min_samples_leaf: int = 20, max_features="sqrt"):
+    def __init__(
+        self,
+        n_estimators: int = 300,
+        min_samples_leaf: int = 20,
+        max_features="sqrt",
+        exclude: tuple[str, ...] = (),
+    ):
+        self.exclude = tuple(exclude)
         self.n_estimators = n_estimators
         self.min_samples_leaf = min_samples_leaf
         self.max_features = max_features
 
     def fit(self, X, time, event):
-        self.prep_ = Preprocessor("tree").fit(X)
+        self.prep_ = Preprocessor("tree", exclude=self.exclude).fit(X)
         Z = self.prep_.transform(X).to_numpy()
         self.forests_ = {}
         for code in CAUSES:

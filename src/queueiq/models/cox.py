@@ -18,11 +18,12 @@ from queueiq.models.preprocess import Preprocessor
 class CauseSpecificCox(CompetingRisksModel):
     name = "cox_cause_specific"
 
-    def __init__(self, penalizer: float = 0.1):
+    def __init__(self, penalizer: float = 0.1, exclude: tuple[str, ...] = ()):
         self.penalizer = penalizer
+        self.exclude = tuple(exclude)
 
     def fit(self, X, time, event):
-        self.prep_ = Preprocessor("linear").fit(X)
+        self.prep_ = Preprocessor("linear", exclude=self.exclude).fit(X)
         Z = self.prep_.transform(X)
         self.models_: dict[int, CoxPHFitter] = {}
         self._train = {}
@@ -57,4 +58,4 @@ class CauseSpecificCox(CompetingRisksModel):
         ).rename_axis("covariate")
 
     def params(self):
-        return {"penalizer": self.penalizer}
+        return {"penalizer": self.penalizer, "exclude": ",".join(self.exclude)}

@@ -1,5 +1,5 @@
 # Every pipeline step is a make target. Later phases add: data, features, train, evaluate, app.
-.PHONY: help setup data eda features train lint format test check clean
+.PHONY: help setup data eda features train evaluate-dev evaluate lint format test check clean
 
 UV ?= uv
 
@@ -22,6 +22,12 @@ features:  ## Leakage-safe feature table: data/processed/features.parquet + repo
 
 train:  ## Fit all models on the time split; reports/model_comparison.md (+ MLflow in mlruns/)
 	$(UV) run python -m queueiq.models.train
+
+evaluate-dev:  ## Phase 5 block A (development) + frozen model selection (protocol section 3)
+	$(UV) run python -m queueiq.evaluation.dev
+
+evaluate:  ## Phase 5 blocks B + C (report only) using the frozen selection; evaluation report + model card
+	$(UV) run python -m queueiq.evaluation.final
 
 lint:  ## Check lint and formatting (no changes made)
 	$(UV) run ruff check .

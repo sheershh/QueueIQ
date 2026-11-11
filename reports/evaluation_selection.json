@@ -1,0 +1,193 @@
+{
+  "protocol_file": "docs/evaluation_protocol.md",
+  "protocol_sha256": "384f25fed2e64a9806253e841aafcd1bdb9c5af49391612bfdd06a707cccfc8b",
+  "protocol_tag": "eval-protocol-v1",
+  "protocol_commit": "9e141b7410b445d188248424864329236d5015ba",
+  "primary_configuration": "rsf_cause_specific|qy=0|recal=0",
+  "selection_reason": "tie rule: within 0.005 of the best (rsf_cause_specific|qy=0|recal=1, 0.0141) and less complex",
+  "scores": {
+    "rsf_cause_specific|qy=0|recal=1": 0.014139,
+    "rsf_cause_specific|qy=0|recal=0": 0.013276,
+    "rsf_cause_specific|qy=1|recal=1": 0.004994,
+    "rsf_cause_specific|qy=1|recal=0": 0.004275,
+    "cox_cause_specific|qy=0|recal=0": 0.003517,
+    "lgbm_discrete_time|qy=1|recal=0": -0.000392,
+    "lgbm_discrete_time|qy=0|recal=0": -0.003375,
+    "cox_cause_specific|qy=1|recal=0": -0.012442,
+    "cox_cause_specific|qy=0|recal=1": -0.013952,
+    "lgbm_discrete_time|qy=0|recal=1": -0.014568,
+    "lgbm_discrete_time|qy=1|recal=1": -0.015403,
+    "baseline_aj_iso_fuel|recal=0": -0.017157,
+    "baseline_aj_iso_fuel|recal=1": -0.030026,
+    "cox_cause_specific|qy=1|recal=1": -0.036609,
+    "recent_cohort": -0.079618
+  },
+  "primary_skill_by_origin": {
+    "2014|operational": 0.06456,
+    "2014|withdrawn": 0.017591,
+    "2015|operational": -0.002198,
+    "2015|withdrawn": -0.007823,
+    "2016|operational": -0.029212,
+    "2016|withdrawn": 0.016498,
+    "2017|operational": 0.02607,
+    "2017|withdrawn": 0.020721
+  },
+  "origins": {
+    "2014": {
+      "n_train": 2027,
+      "n_test": 447,
+      "lgbm_rounds": {
+        "qy=1|recal=0": 19,
+        "qy=0|recal=0": 21,
+        "no_congestion": 28
+      },
+      "recal_constants": {
+        "baseline_aj_iso_fuel|recal=1": {
+          "operational": 0.9312834125866193,
+          "withdrawn": 0.8768064862414625
+        },
+        "cox_cause_specific|qy=1|recal=1": {
+          "operational": 0.8384887302058609,
+          "withdrawn": 0.9433043463362155
+        },
+        "cox_cause_specific|qy=0|recal=1": {
+          "operational": 0.8179463525300347,
+          "withdrawn": 0.9010306879513063
+        },
+        "lgbm_discrete_time|qy=1|recal=1": {
+          "operational": 0.8874895816822342,
+          "withdrawn": 0.9114487346144182
+        },
+        "lgbm_discrete_time|qy=0|recal=1": {
+          "operational": 0.8671438323024172,
+          "withdrawn": 0.8894214873361452
+        },
+        "rsf_cause_specific|qy=1|recal=1": {
+          "operational": 0.8898344937246895,
+          "withdrawn": 0.9190507211205333
+        },
+        "rsf_cause_specific|qy=0|recal=1": {
+          "operational": 0.88373242394849,
+          "withdrawn": 0.9043284529934186
+        }
+      }
+    },
+    "2015": {
+      "n_train": 2474,
+      "n_test": 631,
+      "lgbm_rounds": {
+        "qy=1|recal=0": 44,
+        "qy=0|recal=0": 44,
+        "no_congestion": 41
+      },
+      "recal_constants": {
+        "baseline_aj_iso_fuel|recal=1": {
+          "operational": 1.022818092213109,
+          "withdrawn": 1.1895237706429784
+        },
+        "cox_cause_specific|qy=1|recal=1": {
+          "operational": 0.970936556684322,
+          "withdrawn": 1.1430127046535032
+        },
+        "cox_cause_specific|qy=0|recal=1": {
+          "operational": 0.9791843743109604,
+          "withdrawn": 1.1535409483615744
+        },
+        "lgbm_discrete_time|qy=1|recal=1": {
+          "operational": 0.8333837857781734,
+          "withdrawn": 1.022220706317812
+        },
+        "lgbm_discrete_time|qy=0|recal=1": {
+          "operational": 0.8322030202252428,
+          "withdrawn": 1.0383935227615841
+        },
+        "rsf_cause_specific|qy=1|recal=1": {
+          "operational": 0.9191719392596072,
+          "withdrawn": 1.0208022680650348
+        },
+        "rsf_cause_specific|qy=0|recal=1": {
+          "operational": 0.9206873623720099,
+          "withdrawn": 1.0360002170232168
+        }
+      }
+    },
+    "2016": {
+      "n_train": 3105,
+      "n_test": 901,
+      "lgbm_rounds": {
+        "qy=1|recal=0": 29,
+        "qy=0|recal=0": 69,
+        "no_congestion": 29
+      },
+      "recal_constants": {
+        "baseline_aj_iso_fuel|recal=1": {
+          "operational": 1.1326556485126422,
+          "withdrawn": 1.1270032101002352
+        },
+        "cox_cause_specific|qy=1|recal=1": {
+          "operational": 1.3339107480130123,
+          "withdrawn": 1.1074439711526385
+        },
+        "cox_cause_specific|qy=0|recal=1": {
+          "operational": 1.3587055572486217,
+          "withdrawn": 1.1096493148675295
+        },
+        "lgbm_discrete_time|qy=1|recal=1": {
+          "operational": 1.1210234680461695,
+          "withdrawn": 1.0063261956192102
+        },
+        "lgbm_discrete_time|qy=0|recal=1": {
+          "operational": 1.0187472177747667,
+          "withdrawn": 0.9953224032000196
+        },
+        "rsf_cause_specific|qy=1|recal=1": {
+          "operational": 1.0085066275814005,
+          "withdrawn": 0.9999795994838215
+        },
+        "rsf_cause_specific|qy=0|recal=1": {
+          "operational": 1.0750032060861083,
+          "withdrawn": 1.0138679014609087
+        }
+      }
+    },
+    "2017": {
+      "n_train": 4006,
+      "n_test": 864,
+      "lgbm_rounds": {
+        "qy=1|recal=0": 11,
+        "qy=0|recal=0": 14,
+        "no_congestion": 14
+      },
+      "recal_constants": {
+        "baseline_aj_iso_fuel|recal=1": {
+          "operational": 1.092195172749202,
+          "withdrawn": 0.8577163144480616
+        },
+        "cox_cause_specific|qy=1|recal=1": {
+          "operational": 1.179575840524583,
+          "withdrawn": 0.9181752274218832
+        },
+        "cox_cause_specific|qy=0|recal=1": {
+          "operational": 1.2015356108341477,
+          "withdrawn": 0.9190755712363895
+        },
+        "lgbm_discrete_time|qy=1|recal=1": {
+          "operational": 1.1796203404699879,
+          "withdrawn": 0.8344237574897223
+        },
+        "lgbm_discrete_time|qy=0|recal=1": {
+          "operational": 1.2042022760436473,
+          "withdrawn": 0.8294393906080602
+        },
+        "rsf_cause_specific|qy=1|recal=1": {
+          "operational": 0.9484966494257538,
+          "withdrawn": 0.8461569157947805
+        },
+        "rsf_cause_specific|qy=0|recal=1": {
+          "operational": 0.9584195038788248,
+          "withdrawn": 0.8501048333319102
+        }
+      }
+    }
+  }
+}

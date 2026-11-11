@@ -54,11 +54,15 @@ def redundant_columns(df: pd.DataFrame) -> list[str]:
 
 
 class Preprocessor:
-    def __init__(self, mode: str, min_state_rows: int = 50):
+    def __init__(self, mode: str, min_state_rows: int = 50, exclude: tuple[str, ...] = ()):
         if mode not in ("linear", "tree", "lgbm"):
             raise ValueError(f"unknown mode {mode!r}")
         self.mode = mode
         self.min_state_rows = min_state_rows
+        self.exclude = tuple(exclude)
+        self.numeric = [c for c in NUMERIC if c not in exclude]
+        self.skewed = [c for c in SKEWED if c not in exclude]
+        self.binary = [c for c in BINARY if c not in exclude]
 
     def _categories(self, X: pd.DataFrame) -> pd.DataFrame:
         out = X[CATEGORICAL].astype("string").fillna(OTHER)
@@ -68,9 +72,9 @@ class Preprocessor:
         return out
 
     def _numeric(self, X: pd.DataFrame) -> pd.DataFrame:
-        num = X[NUMERIC].astype(float).copy()
+        num = X[self.numeric].astype(float).copy()
         if self.mode == "linear":
-            num[SKEWED] = np.log1p(num[SKEWED].clip(lower=0))
+            num[self.skewed] = np.log1p(num[self.skewed].clip(lower=0))
         return num
 
     def fit(self, X: pd.DataFrame) -> "Preprocessor":
@@ -85,7 +89,7 @@ class Preprocessor:
 
         num = self._numeric(X)
         self.medians_ = num.median()
-        self.with_missing_ = [c for c in NUMERIC if num[c].isna().any()]
+        self.with_missing_ = [c for c in self.numeric if num[c].isna().any()]
         if self.mode == "linear":
             filled = num.fillna(self.medians_)
             self.means_ = filled.mean()
@@ -99,7 +103,7 @@ class Preprocessor:
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         cats = self._categories(X)
         num = self._numeric(X)
-        binary = X[BINARY].astype(float)
+        binary = X[self.binary].astype(float)
 
         if self.mode == "lgbm":
             out = pd.concat([num, binary], axis=1)

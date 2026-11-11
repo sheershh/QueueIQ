@@ -24,6 +24,8 @@ DAYS_PER_MONTH = 365.25 / 12
 
 # capacity_mw is dropped in favour of its log (same information, better scaled).
 MODEL_FEATURES = [f for f in FEATURES if f != "capacity_mw"]
+# Congestion features (left out in the protocol's ablation).
+CONGESTION_FEATURES = tuple(f for f in MODEL_FEATURES if f.startswith(("county_", "state_prior")))
 
 
 @dataclass
@@ -37,6 +39,7 @@ class Split:
     origin: pd.Timestamp
     test_years: tuple[int, int]
     test_dropped_short_followup: int = 0
+    test_ids: np.ndarray | None = None
 
 
 def month_index(months: pd.Series) -> np.ndarray:
@@ -109,4 +112,5 @@ def make_split(
         origin=origin,
         test_years=test_years,
         test_dropped_short_followup=dropped,
+        test_ids=test["project_id"].to_numpy(),
     )

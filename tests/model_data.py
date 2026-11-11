@@ -28,6 +28,9 @@ def synthetic(n: int = 600, seed: int = 0) -> tuple[pd.DataFrame, pd.DataFrame]:
             "outcome": pd.array(outcome, dtype="string"),
             "end_date": end.to_numpy(),
             "time_months": (end.to_numpy() - q).days / 30.4375,
+            "state": pd.array(rng.choice(["VA", "TX"], n), dtype="string"),
+            "county": pd.array([None] * n, dtype="string"),
+            "fips_code": pd.array([f"0000{i}" for i in rng.integers(1, 6, n)], dtype="string"),
         }
     )
     features = pd.DataFrame({"project_id": entries["project_id"]})

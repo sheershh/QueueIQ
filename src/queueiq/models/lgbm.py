@@ -62,8 +62,9 @@ def expand_person_period(time: np.ndarray, event: np.ndarray) -> pd.DataFrame:
 class DiscreteTimeLGBM(CompetingRisksModel):
     name = "lgbm_discrete_time"
 
-    def __init__(self, num_rounds: int = 300):
+    def __init__(self, num_rounds: int = 300, exclude: tuple[str, ...] = ()):
         self.num_rounds = num_rounds
+        self.exclude = tuple(exclude)
 
     def _design(self, Z: pd.DataFrame, pp: pd.DataFrame) -> pd.DataFrame:
         X = Z.iloc[pp["row"].to_numpy()].reset_index(drop=True)
@@ -71,9 +72,9 @@ class DiscreteTimeLGBM(CompetingRisksModel):
         return X
 
     @staticmethod
-    def select_rounds(X_tr, t_tr, e_tr, X_va, t_va, e_va, max_rounds=2000) -> int:
+    def select_rounds(X_tr, t_tr, e_tr, X_va, t_va, e_va, max_rounds=2000, exclude=()) -> int:
         """Pick the number of boosting rounds by early stopping on a later validation cohort."""
-        prep = Preprocessor("lgbm").fit(X_tr)
+        prep = Preprocessor("lgbm", exclude=exclude).fit(X_tr)
         m = DiscreteTimeLGBM()
         pp_tr, pp_va = expand_person_period(t_tr, e_tr), expand_person_period(t_va, e_va)
         train = lgb.Dataset(
@@ -90,7 +91,7 @@ class DiscreteTimeLGBM(CompetingRisksModel):
         return int(booster.best_iteration)
 
     def fit(self, X, time, event):
-        self.prep_ = Preprocessor("lgbm").fit(X)
+        self.prep_ = Preprocessor("lgbm", exclude=self.exclude).fit(X)
         pp = expand_person_period(time, event)
         data = lgb.Dataset(
             self._design(self.prep_.transform(X), pp), pp["label"], categorical_feature=CATEGORICAL
@@ -123,4 +124,9 @@ class DiscreteTimeLGBM(CompetingRisksModel):
         }
 
     def params(self):
-        return {"num_rounds": self.num_rounds, "interval_months": INTERVAL_MONTHS, **PARAMS}
+        return {
+            "num_rounds": self.num_rounds,
+            "interval_months": INTERVAL_MONTHS,
+            "exclude": ",".join(self.exclude),
+            **PARAMS,
+        }
