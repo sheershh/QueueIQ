@@ -44,6 +44,10 @@ src = ["src", "tests"]
 # UP: modern syntax, SIM: simplifications, NPY: NumPy-specific rules.
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "NPY"]
 
+[tool.ruff.lint.per-file-ignores]
+# Builds markdown report/model-card tables; wrapping those lines would break the tables.
+"src/queueiq/evaluation/final.py" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"

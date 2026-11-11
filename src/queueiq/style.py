@@ -20,6 +20,9 @@ OUTCOME_COLORS = {
 # For charts that are not about outcomes (e.g. request counts), so blue/orange keep their meaning.
 NEUTRAL_SERIES = "#6f6e69"
 
+# Model comparison charts (models are not outcomes, so they never use blue/orange).
+COMPARISON_COLORS = {"primary": TEXT, "baseline": NEUTRAL_SERIES, "recent": "#a3a29b"}
+
 OUTCOME_LABELS = {
     "operational": "Reached operation",
     "withdrawn": "Withdrawn",
