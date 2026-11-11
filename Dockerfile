@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/app/.venv
 WORKDIR /app
 # Runtime dependencies only (no training stack, no test tools), exactly as locked.
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock README.md LICENSE ./
 RUN uv sync --frozen --no-default-groups --no-install-project
 COPY src ./src
 RUN uv sync --frozen --no-default-groups --no-editable

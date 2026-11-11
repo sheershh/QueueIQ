@@ -280,6 +280,13 @@ def main() -> None:
             unsafe_allow_html=True,
         )
         project, problems = project_form(svc)
+        a = ctx["data_attribution"]
+        st.markdown(
+            f'<p class="qi-muted">Data: <a href="{a["source"]}">Queued Up</a>, Lawrence Berkeley '
+            f'National Laboratory and GridTracker, <a href="{a["license"]}">CC BY 4.0</a>. '
+            "Modified: filtered, cleaned and modelled. Not endorsed by LBNL or GridTracker.</p>",
+            unsafe_allow_html=True,
+        )
     with right:
         # on_change="rerun" tracks the open tab, so the explanation (about 1 s) is computed only
         # when its tab is open.

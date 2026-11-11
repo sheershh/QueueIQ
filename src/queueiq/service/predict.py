@@ -28,6 +28,14 @@ from queueiq.service.inputs import MAX_COMPARE, InputError, Options, ProjectInpu
 ENTRIES_FILE = config.PROCESSED_DIR / "queue_entries.parquet"
 EVALUATED_MONTHS = 60  # longest horizon checked in Phase 5 (blocks A and B)
 QUEUE_MONTHS = 60  # window for "expected months in the queue"
+DATA_ATTRIBUTION = {
+    "text": "Queued Up Data File. Copyright (c) 2026, The Regents of the University of California, "
+    "through Lawrence Berkeley National Laboratory & GridTracker. CC BY 4.0.",
+    "source": "https://emp.lbl.gov/queues",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Filtered to PJM, MISO, CAISO and SPP entrants from 2010 on, cleaned, and used to "
+    "derive features and fit models. LBNL and GridTracker do not endorse this project.",
+}
 
 HEADLINES = [
     ("withdrawn_3y", "withdrawn", 36, "Withdrawn within 3 years"),
@@ -191,4 +199,5 @@ class Service:
             "observed_reference": m["observed_reference"],
             "calibration_warning": m["calibration_warning"],
             "background_years": m["background_years"],
+            "data_attribution": DATA_ATTRIBUTION,
         }

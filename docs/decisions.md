@@ -610,3 +610,20 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
 - The limitations panel now also says the deployed refit's own accuracy is unknown: it is fit on every
   project through 2025, so no later cohort exists to check it, and the evidence is the backtest of the same
   procedure.
+
+## Phase 8: polish (2026-11-12)
+
+### D-053: Licensing, attribution and repository hygiene
+- **Code:** MIT License (`LICENSE`, `license = "MIT"` in `pyproject.toml`). The MIT license covers the code
+  only.
+- **Data:** CC BY 4.0 attribution to LBNL and GridTracker, with links to the source and the license and a
+  statement of the changes made (filtered, cleaned, modelled), in the README, the write-up, the dashboard and
+  the API's `/context`. The data file is not redistributed. No endorsement is implied.
+- **Secrets scan:** gitleaks 8.30.1 over all commits found no leaks, and a manual pattern sweep of the full
+  history (cloud keys, tokens, private keys, passwords) found nothing. A scan of the working folder flagged
+  only a third-party source map inside `.venv/`, which is ignored and was never committed.
+- **Large files:** the largest blob ever committed is a 416 KB screenshot. No data file, model file,
+  database or local-only file appears anywhere in the history.
+- **Write-up wording:** plain language; it avoids "accurate" and "high-performing" and reports the negative
+  findings (withdrawal near chance, over-prediction, the selection not carrying over, the congestion features
+  not helping) next to the positive one.

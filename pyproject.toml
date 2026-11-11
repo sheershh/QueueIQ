@@ -3,6 +3,8 @@ name = "queueiq"
 version = "0.1.0"
 description = "Survival and competing-risks models for US grid interconnection queue outcomes."
 readme = "README.md"
+license = "MIT"  # the code only; the LBNL data is CC BY 4.0 (see README)
+license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
 # Runtime dependencies: what the API and dashboard need to load and serve the trained model
 # (this is all the Docker image installs). Exact versions live in uv.lock.
