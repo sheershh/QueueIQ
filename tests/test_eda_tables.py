@@ -40,14 +40,31 @@ def test_add_groups_assigns_era_and_folds_rare_fuels():
     assert set(g["fuel_group"]) == {"gas", "other"}
 
 
-def test_cif_summary_blanks_horizons_with_too_few_projects_at_risk():
-    small = scoped_frame(n_op=5, n_wd=10, n_cens=5)  # 20 projects in total: below MIN_AT_RISK
-    table = T.cif_summary(small, "iso")
+CUTOFF = pd.Timestamp("2025-12-31")
+
+
+def with_dates(df, entry):
+    return df.assign(queue_date=pd.Timestamp(entry))
+
+
+def test_cif_summary_blanks_groups_with_too_few_projects():
+    small = with_dates(scoped_frame(n_op=5, n_wd=10, n_cens=5), "2015-01-01")  # 20 projects
+    table = T.cif_summary(small, "iso", CUTOFF)
     assert np.isnan(table.loc["PJM", "operational_by_3y_%"])
-    big = scoped_frame()
-    table = T.cif_summary(big, None)
-    assert table.loc["All", "at_risk_3y"] >= T.MIN_AT_RISK
-    assert not np.isnan(table.loc["All", "withdrawn_by_3y_%"])
+
+
+def test_cif_summary_uses_only_cohorts_with_full_followup():
+    """2023 entrants have < 3 years of follow-up, so only the 2015 entrants count at 3 years."""
+    old = with_dates(scoped_frame(), "2015-01-01")
+    new = with_dates(scoped_frame(n_op=0, n_wd=0, n_cens=200), "2023-06-01")
+    table = T.cif_summary(pd.concat([old, new]), None, CUTOFF)
+    row = table.loc["All"]
+    assert row["requests"] == 320
+    assert row["full_3y_followup"] == 120
+    # With full follow-up the estimate equals the plain share with an event by 36 months:
+    # withdrawn at months 1..60 -> 36 of 120; operational at months 10..49 -> 27 of 120.
+    assert row["withdrawn_by_3y_%"] == pytest.approx(round(100 * 36 / 120, 1))
+    assert row["operational_by_3y_%"] == pytest.approx(round(100 * 27 / 120, 1))
 
 
 def test_observed_durations_are_medians_among_events_only():

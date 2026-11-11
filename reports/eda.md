@@ -12,23 +12,24 @@ Outcomes in scope: 9,627 withdrawn,
 
 ## Key findings
 
-1. **Reaching operation is rare and slow.** A censoring-aware estimate says
-   3.2% of requests reached operation within 3 years of entering the
-   queue
-   and 6.9% within 5 years. By then 70.3% had
-   withdrawn.
+1. **Reaching operation is rare and slow.** Among requests with at least 3 years of follow-up,
+   3.7% reached operation within 3 years. Among those with at least
+   5 years (8,388 requests, entered 2010–2020),
+   9.8% reached operation within 5 years and
+   65.2% withdrew.
 2. **Recent cohorts are mostly unresolved.** From 2022 on, between 30.1% and
    76.2% of each year's requests are still in the queue. Their outcomes are
    mostly unknown, so raw "% operational" for recent years means little. This is why the models
    must handle censoring.
-3. **Outcomes have shifted over time.** Within 5 years, the share reaching operation was
-   15.7% for 2010–2014 entries and 0.7%
-   for 2020–2025 entries (the latter based on 419 projects still observed at
-   5 years). Withdrawal within 5 years went from 71.5% to
-   80.9%. Only 41 requests from 2020–2025 have reached
-   operation so far.
-4. **Fuel type matters a lot.** Share reaching operation within 5 years: gas 25.5%,
-   wind 11.2%, solar 3.9%, battery 2.0%. These are
+3. **Outcomes have shifted over time.** Within 5 years, 15.7% of
+   2010–2014 entrants reached operation, against 2.2% of 2020
+   entrants. 2020 is the latest entry year with 5 full years of follow-up, so it is the only
+   year from 2020 on that can be compared at 5 years (1,437 requests).
+   Withdrawal within 5 years: 71.5% against
+   68.5%. Only 41 requests from 2020–2025 have reached
+   operation so far. Per-year values are in the table "Outcomes within 3 and 5 years by entry year".
+4. **Fuel type matters a lot.** Share reaching operation within 5 years: gas 26.3%,
+   wind 13.0%, solar 5.4%, battery 4.6%. These are
    raw group comparisons, not effects: the fuel mix also changes across eras and regions (for
    example, 76.7% of battery requests entered in 2020 or later, against
    27.0% of gas). Phase 4 models estimate these factors jointly.
@@ -72,46 +73,74 @@ range of time each cohort has been observed.
 | 2025 | 1152 | 0.0 | 23.8 | 76.2 | 1.0 | 0.0 |
 
 ## Censoring-aware outcome curves (Aalen-Johansen)
-These estimate the cumulative share of requests reaching operation or withdrawing within *t*
-years, using each project only for as long as it was observed. Curves stop once fewer than
-30 projects are still observed. Estimates at 3 and 5 years are blank under the
-same rule.
+The curves estimate the cumulative share of requests reaching operation or withdrawing within
+*t* years, using each project only for as long as it was observed. Curves stop once fewer than
+30 projects are still observed.
+
+**Read the curves with care.** Each curve pools entry years with different follow-up. Its early
+part reflects all cohorts, and its tail reflects only the oldest. Because outcomes changed over
+time, the tail is not "what happens to a typical project later on".
+
+The **tables** avoid this. The 3- and 5-year figures use only requests that entered at least 3
+(or 5) years before the cutoff, so every one was observed for the full horizon. `full_3y_followup`
+and `full_5y_followup` count those requests. Cells are blank when fewer than 30
+qualify.
 
 ![Overall curves](figures/fig03_cif_overall.png)
 
-| scope | requests | at_risk_3y | operational_by_3y_% | withdrawn_by_3y_% | at_risk_5y | operational_by_5y_% | withdrawn_by_5y_% |
+| scope | requests | full_3y_followup | operational_by_3y_% | withdrawn_by_3y_% | full_5y_followup | operational_by_5y_% | withdrawn_by_5y_% |
 |---|---|---|---|---|---|---|---|
-| All | 14796 | 5843 | 3.2 | 50.2 | 2095 | 6.9 | 70.3 |
+| All | 14796 | 11687 | 3.7 | 46.3 | 8388 | 9.8 | 65.2 |
+
+### Outcomes within 3 and 5 years by entry year
+| entry_year | requests | full_3y_followup | operational_by_3y_% | withdrawn_by_3y_% | full_5y_followup | operational_by_5y_% | withdrawn_by_5y_% |
+|---|---|---|---|---|---|---|---|
+| 2010 | 767 | 767 | 6.6 | 62.5 | 767 | 11.0 | 73.5 |
+| 2011 | 672 | 672 | 6.4 | 71.9 | 672 | 9.5 | 77.2 |
+| 2012 | 291 | 291 | 14.1 | 63.9 | 291 | 21.6 | 68.7 |
+| 2013 | 297 | 297 | 15.8 | 54.2 | 297 | 26.6 | 62.0 |
+| 2014 | 447 | 447 | 14.5 | 60.9 | 447 | 22.1 | 67.8 |
+| 2015 | 631 | 631 | 7.0 | 53.4 | 631 | 16.5 | 65.0 |
+| 2016 | 901 | 901 | 4.9 | 56.4 | 901 | 12.5 | 66.8 |
+| 2017 | 864 | 864 | 2.9 | 44.9 | 864 | 8.2 | 60.4 |
+| 2018 | 896 | 896 | 2.7 | 50.9 | 896 | 4.8 | 62.5 |
+| 2019 | 1185 | 1185 | 2.6 | 39.6 | 1185 | 5.9 | 52.4 |
+| 2020 | 1437 | 1437 | 1.0 | 37.9 | 1437 | 2.2 | 68.5 |
+| 2021 | 1720 | 1720 | 0.1 | 31.6 | 0 |  |  |
+| 2022 | 1579 | 1579 | 0.0 | 37.2 | 0 |  |  |
+| 2023 | 1180 | 0 |  |  | 0 |  |  |
+| 2024 | 777 | 0 |  |  | 0 |  |  |
+| 2025 | 1152 | 0 |  |  | 0 |  |  |
 
 ### By region
 ![By region](figures/fig04_cif_by_region.png)
 
-| iso | requests | at_risk_3y | operational_by_3y_% | withdrawn_by_3y_% | at_risk_5y | operational_by_5y_% | withdrawn_by_5y_% |
+| iso | requests | full_3y_followup | operational_by_3y_% | withdrawn_by_3y_% | full_5y_followup | operational_by_5y_% | withdrawn_by_5y_% |
 |---|---|---|---|---|---|---|---|
-| CAISO | 2317 | 619 | 0.7 | 68.1 | 313 | 2.6 | 74.8 |
-| MISO | 4225 | 1512 | 2.0 | 52.4 | 405 | 7.3 | 68.4 |
-| PJM | 6201 | 2984 | 4.8 | 42.1 | 1053 | 8.6 | 69.1 |
-| SPP | 2053 | 728 | 3.6 | 49.5 | 324 | 7.5 | 68.5 |
+| CAISO | 2317 | 1723 | 0.9 | 63.1 | 1361 | 3.7 | 73.3 |
+| MISO | 4225 | 3045 | 2.3 | 48.0 | 1660 | 10.8 | 64.6 |
+| PJM | 6201 | 5645 | 5.0 | 42.1 | 4296 | 11.0 | 64.5 |
+| SPP | 2053 | 1274 | 4.7 | 38.1 | 1071 | 11.0 | 58.7 |
 
 ### By entry era
 ![By era](figures/fig05_cif_by_era.png)
 
-| era | requests | at_risk_3y | operational_by_3y_% | withdrawn_by_3y_% | at_risk_5y | operational_by_5y_% | withdrawn_by_5y_% |
+| era | requests | full_3y_followup | operational_by_3y_% | withdrawn_by_3y_% | full_5y_followup | operational_by_5y_% | withdrawn_by_5y_% |
 |---|---|---|---|---|---|---|---|
-| 2010-2014 | 2474 | 646 | 10.0 | 63.9 | 315 | 15.7 | 71.5 |
-| 2015-2019 | 4477 | 2151 | 3.8 | 48.2 | 1361 | 9.0 | 60.6 |
-| 2020-2025 | 7845 | 3046 | 0.2 | 47.0 | 419 | 0.7 | 80.9 |
+| 2010-2014 | 2474 | 2474 | 10.0 | 63.9 | 2474 | 15.7 | 71.5 |
+| 2015-2019 | 4477 | 4477 | 3.8 | 48.2 | 4477 | 9.0 | 60.6 |
+| 2020-2025 | 7845 | 4736 | 0.3 | 35.4 | 1437 | 2.2 | 68.5 |
 
 ### By primary fuel
 ![By fuel](figures/fig06_cif_by_fuel.png)
 
-| fuel_group | requests | at_risk_3y | operational_by_3y_% | withdrawn_by_3y_% | at_risk_5y | operational_by_5y_% | withdrawn_by_5y_% |
+| fuel_group | requests | full_3y_followup | operational_by_3y_% | withdrawn_by_3y_% | full_5y_followup | operational_by_5y_% | withdrawn_by_5y_% |
 |---|---|---|---|---|---|---|---|
-| solar | 8404 | 3577 | 1.3 | 49.6 | 1387 | 3.9 | 70.7 |
-| wind | 2021 | 749 | 4.2 | 53.5 | 284 | 11.2 | 70.0 |
-| battery | 2702 | 1037 | 1.2 | 50.2 | 225 | 2.0 | 77.6 |
-| gas | 1161 | 317 | 14.9 | 51.0 | 138 | 25.5 | 58.1 |
-| other | 508 | 163 | 17.4 | 44.1 | 61 | 22.3 | 58.7 |
+| solar | 8404 | 6856 | 1.4 | 46.4 | 4764 | 5.4 | 65.5 |
+| wind | 2021 | 1662 | 4.6 | 50.3 | 1464 | 13.0 | 67.6 |
+| battery | 2702 | 1789 | 1.6 | 40.5 | 882 | 4.6 | 69.6 |
+| gas | 1161 | 940 | 15.5 | 50.7 | 900 | 26.3 | 58.3 |
+| other | 508 | 440 | 18.4 | 44.5 | 378 | 26.2 | 57.7 |
 
 ## Time to outcome among projects that reached it
 Median months from entry to the event, **counting only projects that had that event**. These

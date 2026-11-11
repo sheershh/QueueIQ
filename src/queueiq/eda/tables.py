@@ -3,11 +3,11 @@
 import numpy as np
 import pandas as pd
 
-from queueiq.eda.survival import aalen_johansen, at_risk_at, value_at
+from queueiq.eda.survival import aalen_johansen, value_at
 
 HORIZONS_MONTHS = (36, 60)  # 3 and 5 years
-# Only report an estimate at horizon h if at least this many projects were still being
-# observed at h; fewer means the estimate rests on too few projects (decisions D-019).
+# Curves stop once fewer than this many projects are still observed (D-019); horizon
+# estimates need at least this many projects with complete follow-up (D-022).
 MIN_AT_RISK = 30
 ERAS = {"2010-2014": (2010, 2014), "2015-2019": (2015, 2019), "2020-2025": (2020, 2025)}
 MAIN_FUELS = ("solar", "wind", "battery", "gas")
@@ -58,24 +58,33 @@ def curves_by(scoped: pd.DataFrame, by: str | None) -> dict[str, pd.DataFrame]:
     }
 
 
-def cif_summary(scoped: pd.DataFrame, by: str | None) -> pd.DataFrame:
-    """Cumulative % reaching operation / withdrawn by 3 and 5 years, censoring-aware.
+def cif_summary(scoped: pd.DataFrame, by: str | None, cutoff: pd.Timestamp) -> pd.DataFrame:
+    """% reaching operation / withdrawn within 3 and 5 years, using complete follow-up only.
 
-    Blank where fewer than MIN_AT_RISK projects were still observed at that horizon.
+    For horizon h, only projects that entered at least h months before the cutoff are used,
+    so every one of them was observed for the full h months (D-022). Pooling cohorts with
+    different follow-up under a strong time trend mixes them: the early part of a pooled
+    curve comes from recent cohorts and its tail only from old ones. With complete
+    follow-up there is no censoring before h, so the Aalen-Johansen value equals the plain
+    share with that event by h.
+
+    Blank where fewer than MIN_AT_RISK projects in the group qualify.
     """
-    sizes = scoped.groupby(by).size() if by else pd.Series({"All": len(scoped)})
-    rows = {}
-    for name, curve in curves_by(scoped, by).items():
-        row = {"requests": int(sizes[name] if by else sizes["All"])}
+    rows: dict[str, dict] = {}
+    groups = scoped.groupby(by, sort=True) if by else [("All", scoped)]
+    for name, g in groups:
+        row: dict = {"requests": len(g)}
         for h in HORIZONS_MONTHS:
-            ok = at_risk_at(curve, h) >= MIN_AT_RISK
             yrs = h // 12
-            row[f"at_risk_{yrs}y"] = at_risk_at(curve, h)
+            eligible = g[g["queue_date"] <= cutoff - pd.DateOffset(months=h)]
+            row[f"full_{yrs}y_followup"] = len(eligible)
+            enough = len(eligible) >= MIN_AT_RISK
+            curve = aalen_johansen(eligible["time_months"], eligible["outcome"]) if enough else None
             for k in ("operational", "withdrawn"):
                 row[f"{k}_by_{yrs}y_%"] = (
-                    round(100 * value_at(curve, f"cif_{k}", h), 1) if ok else np.nan
+                    round(100 * value_at(curve, f"cif_{k}", h), 1) if enough else np.nan
                 )
-        rows[name] = row
+        rows[str(name)] = row
     table = pd.DataFrame.from_dict(rows, orient="index")
     table.index.name = by or "scope"
     return table

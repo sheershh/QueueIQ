@@ -19,7 +19,8 @@ STATUSES = ["withdrawn", "operational", "active"]
 
 def fake_rows():
     rows = []
-    for i, (fuel, year, status) in enumerate(itertools.product(FUELS, YEARS, STATUSES)):
+    combos = itertools.product(FUELS, YEARS, STATUSES, range(3))  # 45 requests per entry year
+    for i, (fuel, year, status, _) in enumerate(combos):
         row = {
             "type_1": fuel,
             "type_clean": fuel,

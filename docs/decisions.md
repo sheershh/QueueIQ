@@ -190,3 +190,22 @@ Recomputed on all regions, our numbers match LBNL's published headline figures: 
 interconnection 2000–2020 is 12.8% operational, 75.2% withdrawn, and 10.6% active, against LBNL's
 13% / 75% / 10%. The median time from request to operation for projects online in 2025 is 5.07 years,
 against LBNL's "over 5 years". The full table is in `reports/eda.md`.
+
+### D-022: Horizon estimates use only cohorts with complete follow-up (correction to Phase 2)
+- **Problem found:** The first Phase 2 report gave a 5-year estimate for "2020–2025 entrants" of 0.7%
+  operational. Only 2020 entrants have had 5 years: all 419 projects still observed at 5 years entered in
+  2020. The pooled curve's early part came from 2021–2025 entrants and its 5-year value from 2020 entrants
+  alone, so it described no real group. Because outcomes trend strongly with entry year, pooling cohorts
+  that have different follow-up mixes them. In technical terms, censoring (set by entry year) is not
+  independent of the outcome (which also depends on entry year).
+- **Decision:** An estimate at horizon h uses only requests that entered at least h before the cutoff,
+  so every one of them was observed for the full horizon. With complete follow-up there is no censoring
+  before h, and the Aalen-Johansen value equals the plain share with the event by h. Cells are blank when
+  fewer than 30 requests qualify. The report also gains a per-entry-year table, and its curves carry a note
+  that their tails come from the oldest cohorts only.
+- **Effect:**
+  - Model scope within 5 years: 9.8% operational and 65.2% withdrawn (2010–2020 entrants). The pooled
+    version had said 6.9% and 70.3%.
+  - 2020 entrants: 2.2% operational within 5 years, against 15.7% for 2010–2014 entrants.
+- **Lesson carried into modelling:** Under a time trend, a survival model needs entry year (or a proxy for
+  it) as a feature, for the same reason. Evaluation must also respect the horizon cap.
