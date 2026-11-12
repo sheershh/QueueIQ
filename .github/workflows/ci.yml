@@ -1,9 +1,10 @@
 name: CI
 
+# Manual only while the repository is private, so pushes use no GitHub Actions minutes.
+# Run it from the Actions tab ("Run workflow"). Once the repo is public, Actions on
+# GitHub-hosted runners are free and the push trigger can come back.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
