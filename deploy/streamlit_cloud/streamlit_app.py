@@ -10,8 +10,9 @@ import hashlib
 import json
 import runpy
 import sys
-import urllib.request
 from pathlib import Path
+
+import requests  # bundles its own CA certificates (certifi), unlike urllib on some Pythons
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
@@ -37,7 +38,11 @@ def fetch_assets() -> None:
             continue
         dest.parent.mkdir(parents=True, exist_ok=True)
         part = dest.with_name(dest.name + ".part")
-        urllib.request.urlretrieve(f"{base}/{name}", part)
+        with requests.get(f"{base}/{name}", stream=True, timeout=120) as r:
+            r.raise_for_status()
+            with part.open("wb") as f:
+                for chunk in r.iter_content(1 << 20):
+                    f.write(chunk)
         if sha256(part) != spec["sha256"]:
             part.unlink()
             raise RuntimeError(f"Checksum mismatch for {name}; refusing to load it.")
