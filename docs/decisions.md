@@ -642,3 +642,10 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
   `models/` and `data/processed/` folders. The API reported this through `/health` (503 with the fix), and the
   README now says so.
 - The README screenshots were retaken from the fresh clone's containers.
+
+### D-055: Repository made public (2026-11-12)
+- The author made `sheershh/QueueIQ` public after the pre-publish checks: no secrets in the history
+  (D-053), no local-only or AI-related files ever committed, and no data or model files.
+- While the repo was private, CI ran on manual dispatch only, so pushes used no Actions minutes. Public
+  repositories run GitHub-hosted Actions at no cost, so CI runs on every push and pull request again.
+- The explanation tab now names the assumed county too (D-052 covered the outlook tab and Compare).

@@ -127,3 +127,11 @@ def test_app_says_which_county_was_assumed(app):
     assert any("County assumed:" in m.value for m in app.markdown)
     assert any("off by more than the band" in m.value for m in app.markdown)
     assert any("own accuracy is unknown" in m.value for m in app.markdown)
+
+
+def test_why_tab_names_the_assumed_county(svc):
+    from queueiq.app.present import assumed_county_text
+
+    ex = svc.explain(ProjectInput(iso="PJM", state="VA", fuel="solar", capacity_mw=50))
+    assert ex["county"]["assumed"]
+    assert ex["county"]["name"] in assumed_county_text(ex, {"state": "VA"})

@@ -243,6 +243,10 @@ def compare_tab(project: ProjectInput | None) -> None:
 def why_tab(project: ProjectInput, ctx: dict) -> None:
     with st.spinner("Working out the explanation ..."):
         ex = explain(project)
+    if ex["county"]["assumed"]:
+        st.markdown(
+            f'<p class="qi-muted">{assumed_county_text(ex, project)}</p>', unsafe_allow_html=True
+        )
     st.markdown(
         '<p class="qi-prose">Each bar shows how many percentage points a group of features moves '
         "this project's prediction, compared with the model's average prediction for "
