@@ -664,3 +664,20 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
   4.0 allows this with attribution (D-045), but the landing page also says "All rights reserved" and
   "subject to ... DOE approvals", so the author emailed LBNL (EMPinfo@lbl.gov) first. Upload only after
   their reply and the author's go-ahead, to the Space `sheershhh/queueiq`.
+
+### D-056 (revised): Hosted on Streamlit Community Cloud, not Hugging Face
+- **Hugging Face was dropped:** creating the Space returned "Static Spaces are free for everyone, but
+  hosting Gradio and Docker Spaces on free cpu-basic requires a PRO subscription", and its Streamlit option
+  no longer exists. The author wants hosting to be free, so nothing was created there.
+- **Streamlit Community Cloud** runs the app from this public repository at no cost. Entry point:
+  `deploy/streamlit_cloud/streamlit_app.py`, with its own `requirements.txt` (runtime group exported from
+  `uv.lock`).
+- **Model and data stay out of git (D-045).** `make assets` builds the three deployed model files and the
+  queue history trimmed to the 13 columns the service reads, and writes their sizes and SHA-256 checksums
+  to `deploy/streamlit_cloud/assets.json`. They are published as the GitHub Release `deploy-assets-v1`. On
+  first start the app downloads them, verifies each checksum, and refuses to load a mismatch. It never
+  overwrites files that already exist, so local data is safe.
+- **License:** the author chose to publish under CC BY 4.0 without waiting for LBNL. The release notes and
+  every app page carry the attribution, license link, statement of changes and no-endorsement note.
+- **Risk:** Community Cloud's memory limit is tight for the forest (about 1.4 GB peak). If the app does
+  not fit, it is taken down and the repository stays local-run only.

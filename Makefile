@@ -1,5 +1,5 @@
 # Every pipeline step is a make target. Later phases add: data, features, train, evaluate, app.
-.PHONY: help setup data eda features train evaluate-dev evaluate evaluate-render error-range explain api app screenshots space lint format test check clean
+.PHONY: help setup data eda features train evaluate-dev evaluate evaluate-render error-range explain api app screenshots assets lint format test check clean
 
 UV ?= uv
 
@@ -53,8 +53,8 @@ app:  ## Run the Streamlit dashboard locally on http://localhost:8501
 screenshots:  ## Dashboard screenshots at laptop and phone width (app must be running; needs Google Chrome)
 	$(UV) run python scripts/screenshots.py
 
-space:  ## Assemble the Hugging Face Space in build/hf_space/ (uploads nothing)
-	$(UV) run python scripts/build_space.py
+assets:  ## Build the hosted app's model + data files and their checksums (build/assets/)
+	$(UV) run python scripts/release_assets.py
 
 lint:  ## Check lint and formatting (no changes made)
 	$(UV) run ruff check .
