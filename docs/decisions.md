@@ -739,3 +739,13 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
   grid.
 - Other countries were considered and left out: no comparable public queue history was verified for
   them, and the US model would not transfer. Listed as a next step.
+
+### D-061: Hosting notes learned on deploy (2026-11-12)
+- Streamlit Community Cloud re-runs the page after a push but keeps already-imported modules in memory.
+  When a push changes modules the page imports (here `queueiq.style`), the live app raises an
+  ImportError until it is rebooted (Manage app, then Reboot app). Reboot after such pushes.
+- The Cloud app runs on Python 3.14 (its default) with the pinned packages, and the pickled model
+  loads there. Cloud replaced pyarrow 26.0.1 with 24.0.0 because of a crash warning it knows about for
+  that version; no effect seen.
+- Streamlit Cloud added `.devcontainer/devcontainer.json` (its Codespaces template) to the repository
+  under the author's account; it is kept and only matters if the repo is opened in Codespaces.
