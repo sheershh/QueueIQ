@@ -649,3 +649,18 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
 - While the repo was private, CI ran on manual dispatch only, so pushes used no Actions minutes. Public
   repositories run GitHub-hosted Actions at no cost, so CI runs on every push and pull request again.
 - The explanation tab now names the assumed county too (D-052 covered the outlook tab and Compare).
+
+### D-056: Hosted demo on Hugging Face Spaces, prepared but not published (2026-11-12)
+- **Why:** visitors can use the dashboard from a link without cloning anything. Free CPU Spaces have
+  enough memory (the dashboard peaks at about 1.4 GB).
+- **How:** `make space` assembles `build/hf_space/` (git-ignored): the Space card and entry point from
+  `deploy/huggingface/`, a copy of the `queueiq` package, the theme, requirements exported from `uv.lock`
+  (runtime group only), the three deployed model files (about 90 MB) and the queue history trimmed to the
+  13 columns the service reads. Streamlit Space, no Docker.
+- **Tested:** a fresh Python 3.12 environment built only from the Space's `requirements.txt`, run from the
+  Space folder without the repository installed. All three tabs, the assumed-county note and the
+  attribution rendered with no errors.
+- **Not published yet:** the Space would redistribute a model and a table derived from the LBNL file. CC BY
+  4.0 allows this with attribution (D-045), but the landing page also says "All rights reserved" and
+  "subject to ... DOE approvals", so the author emailed LBNL (EMPinfo@lbl.gov) first. Upload only after
+  their reply and the author's go-ahead, to the Space `sheershhh/queueiq`.
