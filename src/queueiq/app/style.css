@@ -45,3 +45,39 @@
   .block-container { padding-left: 16px; padding-right: 16px; padding-top: 1rem; }
   .qi-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 }
+
+/* -- Phase 9 redesign ----------------------------------------------------------------------- */
+/* Streamlit Cloud's top bar covers the first ~3.5rem: keep the header clear of it. */
+.block-container { padding-top: 4.5rem; }
+.qi-header { margin-bottom: 8px; }
+.qi-brand { font-size: 28px; font-weight: 600; line-height: 1.2; margin: 0; }
+.qi-tagline { font-size: 18px; margin: 4px 0 2px; max-width: 70ch; }
+.qi-section { font-size: 18px; font-weight: 600; margin: 24px 0 8px; padding-top: 12px; border-top: 1px solid var(--qi-rule); }
+
+.qi-ramp { display: flex; height: 8px; width: 180px; margin: 4px 0; }
+.qi-ramp i { flex: 1; }
+.qi-maplegend { color: var(--qi-muted); }
+
+.qi-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; max-width: 280px; margin: 12px 0 8px; }
+.qi-cell { display: block; aspect-ratio: 1; border-radius: 2px; animation: qi-fill 420ms ease-out both; animation-delay: calc(var(--i) * 5ms); }
+.qi-grid-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--qi-muted); }
+.qi-grid-legend .qi-cell { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: middle; animation: none; }
+.qi-cell.qi-withdrawn { background: var(--qi-withdrawn); }
+.qi-cell.qi-operational { background: var(--qi-operational); }
+.qi-cell.qi-waiting { background: var(--qi-rule); }
+@keyframes qi-fill { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+
+.qi-pctl { margin: 4px 0 20px; }
+.qi-pctl-label { color: var(--qi-muted); }
+.qi-pctl-value { font-size: 18px; font-weight: 600; margin: 2px 0 8px; }
+.qi-track { position: relative; height: 6px; background: var(--qi-rule); border-radius: 3px; margin-bottom: 8px; }
+.qi-marker { position: absolute; top: -5px; width: 4px; height: 16px; margin-left: -2px; background: var(--qi-ink); border-radius: 2px; transition: left 500ms ease-out; }
+
+.qi-footer { color: var(--qi-muted); border-top: 1px solid var(--qi-rule); margin-top: 32px; padding-top: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .qi-cell, .qi-marker { animation: none; transition: none; }
+}
+@media (max-width: 720px) {
+  .block-container { padding-top: 4rem; }
+}

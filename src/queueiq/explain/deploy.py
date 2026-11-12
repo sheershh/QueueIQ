@@ -20,10 +20,12 @@ from queueiq.explain.reference import (
     calibration_warning,
     calibration_warning_values,
     observed_reference,
+    signal_strength,
 )
 from queueiq.models.cox import CauseSpecificCox
 from queueiq.models.data import MODEL_FEATURES, make_split
 from queueiq.models.rsf import CauseSpecificRSF
+from queueiq.service.history import comparable_table
 
 DEPLOY_ORIGIN = pd.Timestamp("2026-01-01")  # day after the cutoff: every dated event counts
 DEPLOY_DIR = config.PROJECT_ROOT / "models"
@@ -33,7 +35,13 @@ BACKGROUND_FILE = DEPLOY_DIR / "deploy_background.parquet"
 META_FILE = DEPLOY_DIR / "deploy_meta.json"
 RANGE_FILE = config.REPORTS_DIR / "past_error_range.json"  # from `make error-range` (committed)
 METRICS_FILE = config.REPORTS_DIR / "evaluation_metrics.csv"  # Phase 5 results (committed)
-BACKGROUND_YEARS = (2021, 2025)  # "typical recent project" for explanations
+BACKGROUND_YEARS = (2021, 2025)
+HISTORY_HORIZONS = (36, 60)  # months; the dashboard shows "within 3 years" and "within 5 years"
+PERCENTILE_YEARS = (2021, 2025)  # "recent entrants" that percentiles compare against
+PERCENTILE_TARGETS = {
+    "withdrawn_3y": ("withdrawn", 36),
+    "operational_3y": ("operational", 36),
+}  # "typical recent project" for explanations
 BACKGROUND_SIZE = 64
 
 
@@ -87,7 +95,8 @@ def build(entries: pd.DataFrame, features: pd.DataFrame, selection: dict) -> dic
     joblib.dump(model, MODEL_FILE, compress=3)
     joblib.dump(cox, COX_FILE, compress=3)
     background.to_parquet(BACKGROUND_FILE, index=False)
-    cal = calibration_warning_values(pd.read_csv(METRICS_FILE), primary)
+    metrics = pd.read_csv(METRICS_FILE)
+    cal = calibration_warning_values(metrics, primary)
     past = json.loads(RANGE_FILE.read_text())
     if past["primary_configuration"] != primary:
         raise ValueError("past_error_range.json was built for a different primary configuration")
@@ -107,6 +116,12 @@ def build(entries: pd.DataFrame, features: pd.DataFrame, selection: dict) -> dic
         "phase5_final_test_calibration": cal,
         "calibration_warning": calibration_warning(cal),
         "past_error_range": past,
+        "percentile_reference": percentile_reference(model, X),
+        "signal_strength": signal_strength(metrics, primary),
+        "comparable_outcomes": {
+            str(h): comparable_table(entries, pd.Timestamp(config.DATA_CUTOFF), horizon=h)
+            for h in HISTORY_HORIZONS
+        },
     }
     META_FILE.write_text(json.dumps(meta, indent=2) + "\n")
     return {
@@ -117,6 +132,22 @@ def build(entries: pd.DataFrame, features: pd.DataFrame, selection: dict) -> dic
         "X": X,
         "ids": ids,
         "fit_seconds": fit_s,
+    }
+
+
+def percentile_reference(model, X: pd.DataFrame) -> dict:
+    """101 quantiles (0th to 100th percentile) of the model's 3-year predictions over recent
+    in-scope entrants. A new project is placed within them (Service.percentiles)."""
+    recent = X[X["queue_year"].between(*PERCENTILE_YEARS)]
+    cif = model.predict_cif(recent)
+    qs = np.linspace(0, 1, 101)
+    return {
+        "years": list(PERCENTILE_YEARS),
+        "n": len(recent),
+        "quantiles": {
+            t: [float(v) for v in np.quantile(cif[k][:, h - 1], qs)]
+            for t, (k, h) in PERCENTILE_TARGETS.items()
+        },
     }
 
 

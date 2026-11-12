@@ -1,5 +1,5 @@
 # Every pipeline step is a make target. Later phases add: data, features, train, evaluate, app.
-.PHONY: help setup data eda features train evaluate-dev evaluate evaluate-render error-range explain api app screenshots assets lint format test check clean
+.PHONY: help setup data eda features train evaluate-dev evaluate evaluate-render error-range explain api app screenshots assets geo lint format test check clean
 
 UV ?= uv
 
@@ -55,6 +55,9 @@ screenshots:  ## Dashboard screenshots at laptop and phone width (app must be ru
 
 assets:  ## Build the hosted app's model + data files and their checksums (build/assets/)
 	$(UV) run python scripts/release_assets.py
+
+geo:  ## County/state shapes for the map from Census files (src/queueiq/app/assets/)
+	$(UV) run python scripts/build_geo.py
 
 lint:  ## Check lint and formatting (no changes made)
 	$(UV) run ruff check .

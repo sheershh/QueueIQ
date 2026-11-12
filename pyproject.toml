@@ -36,6 +36,7 @@ pipeline = [
     "lightgbm>=4.7.0",
     "mlflow>=3.18.0",
     "openpyxl>=3.1.5",
+    "pyshp>=3.1.8",
 ]
 
 [tool.uv]

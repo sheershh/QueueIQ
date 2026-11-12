@@ -43,6 +43,35 @@ def calibration_warning_values(metrics: pd.DataFrame, primary: str) -> dict[str,
     }
 
 
+# Wording for how much the model's ranking can be trusted, from its 3-year AUC (D-058).
+EVIDENCE_LEVELS = ((0.70, "moderate evidence"), (0.60, "some evidence"), (0.0, "weak evidence"))
+
+
+def signal_strength(metrics: pd.DataFrame, primary: str) -> dict[str, dict]:
+    """Per outcome, the most recent estimable 3-year AUC of the primary configuration: the final
+    test (block C) if estimable, otherwise the pooled development block (A). Plus the range over the
+    seven single-year origins of blocks A and B."""
+    m = metrics[(metrics["model"] == primary) & (metrics["tau"] == 36)]
+    out = {}
+    for outcome in ("withdrawn", "operational"):
+        rows = m[m["outcome"] == outcome]
+        c = rows[(rows["block"] == "C") & rows["auc"].notna()]
+        ref = c if len(c) else rows[(rows["block"] == "A-pooled") & rows["auc"].notna()]
+        r = ref.iloc[0]
+        singles = rows[rows["block"].isin(["A", "B"])]["auc"].dropna()
+        auc = float(r["auc"])
+        out[outcome] = {
+            "auc": auc,
+            "block": str(r["block"]),
+            "n": int(r["n"]),
+            "cases": int(r["cases"]),
+            "auc_min": float(singles.min()),
+            "auc_max": float(singles.max()),
+            "label": next(label for cut, label in EVIDENCE_LEVELS if auc >= cut),
+        }
+    return out
+
+
 def calibration_warning(cal: dict[str, dict]) -> str:
     def pct(x):
         return f"{100 * x:.2f}%" if x < 0.01 else f"{100 * x:.1f}%"

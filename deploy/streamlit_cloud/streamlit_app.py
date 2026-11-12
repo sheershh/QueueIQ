@@ -31,10 +31,11 @@ def fetch_assets() -> None:
     base = f"https://github.com/{MANIFEST['repo']}/releases/download/{MANIFEST['tag']}"
     for name, spec in MANIFEST["files"].items():
         dest = ROOT / spec["path"]
-        if dest.exists():
-            # Present already: built locally by `make train` (never overwritten), or downloaded
-            # by an earlier session. Downloads land in a .part file first, so a partial download
-            # never takes this path.
+        if dest.exists() and (not spec.get("refresh") or dest.stat().st_size == spec["bytes"]):
+            # Present already. Data files are never overwritten (locally they are the full table
+            # built by `make data`). Model files marked "refresh" are replaced when their size
+            # differs from the manifest, so a host that kept old files picks up a new release.
+            # Downloads land in a .part file first, so a partial download never counts.
             continue
         dest.parent.mkdir(parents=True, exist_ok=True)
         part = dest.with_name(dest.name + ".part")

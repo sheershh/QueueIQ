@@ -12,6 +12,7 @@ from queueiq.explain.reference import observed_reference
 from queueiq.features.build import build_features
 from queueiq.models.rsf import CauseSpecificRSF
 from queueiq.service.features import history
+from queueiq.service.history import comparable_table
 from queueiq.service.inputs import Options
 from queueiq.service.predict import Service
 
@@ -35,6 +36,26 @@ FINAL_TEST_CHECK = {
             "band_high": 0.056,
             "inside_band": False,
         },
+    },
+}
+SIGNAL = {
+    "withdrawn": {
+        "auc": 0.56,
+        "label": "weak evidence",
+        "block": "C",
+        "n": 100,
+        "cases": 34,
+        "auc_min": 0.47,
+        "auc_max": 0.60,
+    },
+    "operational": {
+        "auc": 0.72,
+        "label": "moderate evidence",
+        "block": "A-pooled",
+        "n": 100,
+        "cases": 10,
+        "auc_min": 0.69,
+        "auc_max": 0.89,
     },
 }
 STATES = {"PJM": ("VA", ["51001", "51003", "51005"]), "MISO": ("IL", ["17001", "17003"])}
@@ -109,6 +130,15 @@ def synthetic_service(seed: int = 0) -> Service:
                 for i, m in enumerate(MULTIPLIERS)
             ],
             "final_test_check": FINAL_TEST_CHECK,
+        },
+        "phase5_final_test_calibration": {
+            "withdrawn": {"predicted": 0.52, "observed": 0.34, "cases": 34, "n": 100},
+            "operational": {"predicted": 0.05, "observed": 0.0003, "cases": 1, "n": 100},
+        },
+        "percentile_reference": deploy.percentile_reference(model, X),
+        "signal_strength": SIGNAL,
+        "comparable_outcomes": {
+            str(h): comparable_table(entries, CUTOFF, horizon=h) for h in deploy.HISTORY_HORIZONS
         },
     }
     background = X.sample(8, random_state=0).reset_index(drop=True)

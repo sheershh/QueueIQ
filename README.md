@@ -47,19 +47,28 @@ Details: [evaluation report](reports/evaluation.md), [model card](docs/model_car
 
 ## The dashboard and API
 
-| Outlook | Compare | Why this prediction |
+**Try it: https://queueiq.streamlit.app** (free hosting; the first visit after a quiet spell takes a few
+seconds to wake up).
+
+| Pick a county on the 3D map | What to expect | Why the model ranks it there |
 |---|---|---|
-| ![Outlook](docs/screenshots/outlook_laptop.png) | ![Compare](docs/screenshots/compare_laptop.png) | ![Why](docs/screenshots/why_laptop.png) |
+| ![Map](docs/screenshots/county_selected_laptop.png) | ![Overview](docs/screenshots/overview_laptop.png) | ![Why](docs/screenshots/why_laptop.png) |
 
-Phone width: [outlook](docs/screenshots/outlook_phone.png), [compare](docs/screenshots/compare_phone.png),
-[why](docs/screenshots/why_phone.png), [input error](docs/screenshots/error_phone.png).
+More: [shortlist of setups](docs/screenshots/shortlist_laptop.png), [phone width](docs/screenshots/overview_phone.png),
+[input error](docs/screenshots/error_laptop.png).
 
-**How to read it.** For a project entering the queue on 1 January 2026, the lines show the deployed model's
-chance of having withdrawn, or reached operation, by each month. The shaded band is the **past-error range**:
-the same curves redrawn with each of the model's 2014–2020 calibration errors (decision D-046). It is not a
-confidence interval. Fewer projects withdrew than predicted in every past test year, so the band sits below
-the withdrawal line. Curves beyond 60 months were never checked against real outcomes (greyed out). If you
-don't choose a county, the busiest county in the state is assumed and named on screen.
+**How to read it.**
+1. **Where:** click a county on the map. Column height shows how many projects asked to connect there in
+   the 5 years before 2026; color shows how many of those already withdrew. Grey regions aren't covered.
+2. **What:** pick the technology, size and storage.
+3. **What to expect:** a sentence and a grid of 100 squares showing what **actually happened** to
+   comparable past projects (same grid operator and technology). The model's percentages ran high on recent
+   projects, so the main answer uses real outcomes (decision D-057). The model is used only to rank this
+   project against 2021–2025 entrants, and each ranking says how far it can be trusted: moderate evidence
+   for reaching operation, weak for withdrawal (D-058).
+4. **Details:** the model's month-by-month curves with the **past-error range** (the curves redrawn with
+   each of the model's 2014–2020 calibration errors; not a confidence interval, D-046), exact numbers, what
+   drives the prediction, a shortlist for comparing setups, and the limitations.
 
 ### Run it
 

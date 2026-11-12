@@ -18,11 +18,14 @@ import pandas as pd
 from queueiq import config
 from queueiq.evaluation.recalibrate import CAUSE_KEYS, apply_scaling, past_error_band
 from queueiq.explain import deploy
+from queueiq.explain.deploy import PERCENTILE_TARGETS
 from queueiq.explain.groups import GROUPS, TARGETS, describe
 from queueiq.explain.shapley import explain
 from queueiq.explain.text import drivers, narrative
 from queueiq.models.base import GRID
 from queueiq.service.features import history, project_features
+from queueiq.service.geo import county_crowding, map_counties
+from queueiq.service.history import comparable_outcomes
 from queueiq.service.inputs import MAX_COMPARE, InputError, Options, ProjectInput
 
 ENTRIES_FILE = config.PROCESSED_DIR / "queue_entries.parquet"
@@ -57,6 +60,7 @@ class Service:
     deployment: deploy.Deployment
     hist: pd.DataFrame
     options: Options
+    _crowding: pd.DataFrame | None = None
 
     @classmethod
     def load(cls, entries_file: Path = ENTRIES_FILE) -> "Service":
@@ -65,7 +69,7 @@ class Service:
             names = ", ".join(str(p.relative_to(config.PROJECT_ROOT)) for p in missing)
             raise FileNotFoundError(f"Missing {names}. Run `make data && make train` first.")
         entries = pd.read_parquet(entries_file)
-        return cls(deploy.load(), history(entries), Options.from_entries(entries))
+        return cls(deploy.load(), history(entries), Options.from_entries(entries, map_counties()))
 
     @property
     def meta(self) -> dict:
@@ -154,6 +158,36 @@ class Service:
             for p, r in zip(projects, preds, strict=True)
         ]
 
+    # -- history-first view (D-057, D-058) ---------------------------------------------
+    def comparable(self, p: ProjectInput) -> dict:
+        """What happened to past projects with the same grid operator and technology."""
+        return {
+            h: comparable_outcomes(table, p.iso, p.fuel)
+            for h, table in self.meta["comparable_outcomes"].items()
+        }
+
+    def percentiles(self, p: ProjectInput) -> dict:
+        """Where this project's 3-year predictions fall among recent entrants (0-100), with how far
+        the model's ranking can be trusted for each outcome."""
+        cif = self.deployment.model.predict_cif(self.features(p))
+        ref = self.meta["percentile_reference"]
+        out = {}
+        for target, (k, h) in PERCENTILE_TARGETS.items():
+            q = np.asarray(ref["quantiles"][target])
+            value = float(cif[k][0, h - 1])
+            out[target] = {
+                "percentile": float(np.interp(value, q, np.linspace(0, 100, len(q)))),
+                "value": value,
+                "evidence": self.meta["signal_strength"][k],
+            }
+        return {"reference_years": ref["years"], "reference_n": ref["n"], "targets": out}
+
+    def crowding(self) -> pd.DataFrame:
+        """Requests and withdrawn share per county key in the 5 years before the entry date."""
+        if self._crowding is None:
+            self._crowding = county_crowding(self.hist, self.entry_date)
+        return self._crowding
+
     # -- explanation ----------------------------------------------------------------------
     def explain(self, p: ProjectInput) -> dict:
         X = self.features(p)
@@ -198,6 +232,7 @@ class Service:
             "past_error_range": m["past_error_range"],
             "observed_reference": m["observed_reference"],
             "calibration_warning": m["calibration_warning"],
+            "phase5_final_test_calibration": m["phase5_final_test_calibration"],
             "background_years": m["background_years"],
             "data_attribution": DATA_ATTRIBUTION,
         }

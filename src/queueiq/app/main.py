@@ -1,8 +1,10 @@
-"""QueueIQ dashboard (Streamlit). Run with `make app` or `docker compose up`.
+"""QueueIQ dashboard (Streamlit). Run with `make app`; hosted on Streamlit Community Cloud.
 
 UI only: every number comes from queueiq.service (which calls models/ and explain/).
-Layout: project inputs on the left; on the right, tabs for the outlook, a what-if comparison and
-"why this prediction".
+Layout (decisions D-057 to D-060), top to bottom:
+  header -> where (3D county map, click to choose) -> what (technology, size, storage)
+  -> answer (what happened to comparable past projects; how the model ranks this one)
+  -> details tabs (model curves, why, shortlist, how to read this) -> footer.
 """
 
 import json
@@ -11,31 +13,45 @@ from pathlib import Path
 import streamlit as st
 from pydantic import ValidationError
 
-from queueiq.app import charts
+from queueiq.app import charts, geomap
 from queueiq.app.present import (
     FUEL_LABELS,
     STAT_LABELS,
+    TECH_LABELS,
     assumed_county_text,
     band_check_text,
     compare_table,
     curve_table,
     describe_project,
+    history_sentence,
     long_date,
+    outcome_grid_html,
     pct,
+    percentile_html,
+    plural,
+    share_text,
+    short_warning,
     summary_html,
     unique_name,
 )
 from queueiq.service.inputs import MAX_COMPARE, UNKNOWN_COUNTY, InputError, ProjectInput
 from queueiq.service.predict import Service
-from queueiq.style import OUTCOME_COLORS, OUTCOME_LABELS
+from queueiq.style import CROWDING_RAMP, OUTCOME_COLORS, OUTCOME_LABELS
 
 MODEL_CARD = "https://github.com/sheershh/QueueIQ/blob/main/docs/model_card.md"
+REPO = "https://github.com/sheershh/QueueIQ"
 CSS = Path(__file__).with_name("style.css")
+CAPACITY_PRESETS = {"50 MW": 50.0, "150 MW": 150.0, "500 MW": 500.0}
 
 st.set_page_config(page_title="QueueIQ", layout="wide", initial_sidebar_state="collapsed")
 st.markdown(f"<style>{CSS.read_text()}</style>", unsafe_allow_html=True)
 
 
+def html(markup: str) -> None:
+    st.markdown(markup, unsafe_allow_html=True)
+
+
+# -- data access (cached) ----------------------------------------------------------------------
 @st.cache_resource(show_spinner="Loading the model ...")
 def load_service() -> Service:
     return Service.load()
@@ -49,6 +65,11 @@ def setup_key(project: ProjectInput) -> str:
 @st.cache_data(show_spinner=False, max_entries=256)
 def _predict(setup_json: str) -> dict:
     return load_service().predict(ProjectInput.model_validate_json(setup_json))
+
+
+@st.cache_data(show_spinner=False, max_entries=256)
+def _percentiles(setup_json: str) -> dict:
+    return load_service().percentiles(ProjectInput.model_validate_json(setup_json))
 
 
 @st.cache_data(show_spinner=False, max_entries=64)
@@ -70,55 +91,169 @@ def compare(projects_json: str) -> list[dict]:
     return load_service().compare(projects)
 
 
-def project_form(svc: Service) -> tuple[ProjectInput | None, list[str]]:
-    """Inputs in the left column. Returns the project, or None plus the problems to show."""
+# -- location state ------------------------------------------------------------------------------
+def init_location(svc: Service) -> None:
     opts = svc.options
-    name = st.text_input(
-        "Name", value="Project A", max_chars=40, help="Used to tell projects apart in Compare."
+    if "loc_state" not in st.session_state:
+        st.session_state.loc_iso = "PJM"
+        st.session_state.loc_state = opts.largest_state["PJM"]
+        st.session_state.loc_county = None
+
+
+def on_map_select() -> None:
+    """A county clicked on the map becomes the selected location (state and ISO follow)."""
+    key = geomap.selected_key(st.session_state.get("qi_map"))
+    if not key:
+        return
+    opts = load_service().options
+    for state, counties in opts.counties.items():
+        if state in opts.state_isos and any(c.key == key for c in counties):
+            st.session_state.loc_state = state
+            st.session_state.loc_county = key
+            st.session_state.loc_iso = opts.state_isos[state][0]
+            return
+
+
+def on_state_change() -> None:
+    opts = load_service().options
+    st.session_state.loc_county = None
+    st.session_state.loc_iso = opts.state_isos[st.session_state.loc_state][0]
+
+
+# -- sections ------------------------------------------------------------------------------------
+def header(ctx: dict) -> None:
+    html(
+        '<header class="qi-header"><div class="qi-brand">QueueIQ</div>'
+        '<div class="qi-tagline">What usually happens to a power project after it asks to connect '
+        "to the US grid, and how a new one compares.</div>"
+        '<p class="qi-muted">Covers the PJM, MISO, CAISO and SPP queues: '
+        f"{ctx['trained_on_rows']:,} projects that entered from 2010 to 2025, with outcomes up to "
+        f"{long_date(ctx['outcomes_as_of'])}. Other regions lack the dates needed.</p></header>"
     )
-    iso = st.selectbox("Grid operator", list(opts.states), index=0)
-    states = opts.states[iso]
-    state = st.selectbox(
-        "State",
-        states,
-        index=states.index(opts.largest_state[iso]),
-        help="States with at least 20 past projects in this grid operator.",
-    )
-    busiest = opts.busiest_county(state)
-    county = st.selectbox(
-        "County",
-        [*[c.key for c in opts.counties.get(state, [])], UNKNOWN_COUNTY],
-        index=None,
-        placeholder=f"Not chosen: {busiest.name} is assumed" if busiest else "Not chosen",
-        format_func=lambda k: "Not recorded" if k == UNKNOWN_COUNTY else opts.county(state, k).name,
-        help="Used to count earlier requests nearby. If you don't choose one, the county with the "
-        "most past requests in the state is assumed, and the results say so. 'Not recorded' is "
-        "treated like past projects whose county LBNL did not record, which itself shifts the "
-        "prediction.",
-    )
-    fuel = st.selectbox("Technology", list(FUEL_LABELS), format_func=FUEL_LABELS.get)
-    storage = st.checkbox(
-        "Paired with battery storage",
-        value=False,
-        disabled=fuel == "battery",
-        help="A battery project is storage by definition.",
-    )
-    capacity = st.number_input(
-        "Capacity (MW)", min_value=0.0, max_value=float(opts.capacity_max), value=150.0, step=10.0
-    )
-    st.markdown(
-        '<p class="qi-muted">Assumes the project enters the queue on '
-        f"{long_date(svc.meta['entry_date'])}, the day after the data ends.</p>",
-        unsafe_allow_html=True,
-    )
+
+
+def where_section(svc: Service) -> None:
+    opts = svc.options
+    html('<div class="qi-section">Where is the project?</div>')
+    left, right = st.columns([2.3, 1], gap="large")
+    with left:
+        st.pydeck_chart(
+            geomap.deck(svc.crowding(), st.session_state.loc_county),
+            height=460,
+            on_select=on_map_select,
+            selection_mode="single-object",
+            key="qi_map",
+        )
+        ramp = "".join(f'<i style="background:{c}"></i>' for c in CROWDING_RAMP)
+        html(
+            '<div class="qi-maplegend">Column height: requests filed in the county in the 5 years '
+            "before 2026 (square-root scale). Color: share already withdrawn, low to high "
+            f'<span class="qi-ramp">{ramp}</span>Grey: no requests, or a region the model does '
+            "not cover. Drag to rotate, scroll to zoom, click a county to choose it.</div>"
+        )
+    with right:
+        state = st.session_state.loc_state
+        county = (
+            opts.county(state, st.session_state.loc_county) if st.session_state.loc_county else None
+        )
+        busiest = opts.busiest_county(state)
+        crowd = svc.crowding()
+        shown = county or busiest
+        html(
+            f'<div class="qi-pctl-label">Selected</div><div class="qi-pctl-value">'
+            f"{shown.name} County, {state}</div>"
+            + (
+                ""
+                if county
+                else '<p class="qi-muted">Not chosen yet: this is the busiest county in the state. '
+                "Click the map to pick another.</p>"
+            )
+        )
+        if shown.key in crowd.index:
+            r = crowd.loc[shown.key]
+            html(
+                f'<p class="qi-muted">{plural(int(r["requests_5y"]), "request")} filed here in the '
+                f"last 5 years, {share_text(r['withdrawn_share'])} of them already withdrawn.</p>"
+            )
+        isos = opts.state_isos[state]
+        if st.session_state.loc_iso not in isos:
+            st.session_state.loc_iso = isos[0]
+        if len(isos) > 1:
+            st.segmented_control(
+                f"{state} is served by more than one grid operator",
+                isos,
+                key="loc_iso",
+                help="Ordered by how many past projects each has in this state.",
+            )
+        else:
+            html(f'<p class="qi-muted">Grid operator: {isos[0]}</p>')
+        with st.expander("Choose from a list instead"):
+            st.selectbox(
+                "State",
+                sorted(opts.state_isos),
+                key="loc_state",
+                on_change=on_state_change,
+                help="States with at least 20 past projects in a covered grid operator.",
+            )
+            choices = [c.key for c in opts.counties.get(st.session_state.loc_state, [])]
+            st.selectbox(
+                "County",
+                [*choices, UNKNOWN_COUNTY],
+                key="loc_county",
+                index=None,
+                placeholder="Not chosen: busiest county assumed",
+                format_func=lambda k: (
+                    "Not recorded"
+                    if k == UNKNOWN_COUNTY
+                    else opts.county(st.session_state.loc_state, k).name
+                ),
+            )
+
+
+def what_section(svc: Service) -> tuple[ProjectInput | None, list[str]]:
+    html('<div class="qi-section">What is it?</div>')
+    c1, c2, c3 = st.columns([1.6, 1.4, 1], gap="large")
+    with c1:
+        fuel = (
+            st.segmented_control(
+                "Technology",
+                list(TECH_LABELS),
+                format_func=TECH_LABELS.get,
+                key="tech",
+                default="solar",
+            )
+            or "solar"
+        )
+        if fuel == "other":
+            html(f'<p class="qi-muted">{FUEL_LABELS["other"]}</p>')
+    with c2:
+        if "capacity" not in st.session_state:
+            st.session_state.capacity = 150.0
+        preset = st.pills("Size", list(CAPACITY_PRESETS), key="cap_preset", default=None)
+        if preset and st.session_state.get("_last_preset") != preset:
+            st.session_state.capacity = CAPACITY_PRESETS[preset]
+        st.session_state._last_preset = preset
+        capacity = st.number_input(
+            "Capacity (MW)",
+            min_value=0.0,
+            max_value=float(svc.options.capacity_max),
+            step=10.0,
+            key="capacity",
+        )
+    with c3:
+        storage = st.toggle(
+            "Paired with battery storage",
+            disabled=fuel == "battery",
+            help="A battery project is storage by definition.",
+        )
     if capacity <= 0:
         return None, ["Capacity must be greater than 0 MW."]
     try:
         p = ProjectInput(
-            name=name.strip() or "Project",
-            iso=iso,
-            state=state,
-            county=county,
+            name=st.session_state.get("project_name", "Project A").strip() or "Project",
+            iso=st.session_state.loc_iso,
+            state=st.session_state.loc_state,
+            county=st.session_state.loc_county,
             fuel=fuel,
             capacity_mw=capacity,
             storage=storage,
@@ -129,6 +264,50 @@ def project_form(svc: Service) -> tuple[ProjectInput | None, list[str]]:
     except InputError as e:
         return None, e.problems
     return p, []
+
+
+def answer_section(svc: Service, project: ProjectInput, ctx: dict) -> None:
+    html('<div class="qi-section">What to expect</div>')
+    left, right = st.columns(2, gap="large")
+    with left:
+        html(
+            '<div class="qi-pctl-label">What happened to comparable past projects '
+            "(real outcomes)</div>"
+        )
+        span = (
+            st.segmented_control(
+                "Time after entering the queue",
+                ["Within 3 years", "Within 5 years"],
+                key="horizon",
+                default="Within 3 years",
+                label_visibility="collapsed",
+            )
+            or "Within 3 years"
+        )
+        c = svc.comparable(project)["36" if span == "Within 3 years" else "60"]
+        html(f'<div class="qi-pctl-value">{history_sentence(c, project.iso, project.fuel)}</div>')
+        html(outcome_grid_html(c))
+    with right:
+        html(
+            '<div class="qi-pctl-label">How the model ranks this project against recent '
+            "entrants</div>"
+        )
+        pc = _percentiles(setup_key(project))
+        years = pc["reference_years"]
+        html(
+            percentile_html(
+                "Chance of reaching operation within 3 years",
+                pc["targets"]["operational_3y"],
+                years,
+            )
+        )
+        html(
+            percentile_html(
+                "Risk of withdrawing within 3 years", pc["targets"]["withdrawn_3y"], years
+            )
+        )
+        html('<p class="qi-muted">See what drives this under "Why" in the details below.</p>')
+    html(f'<p class="qi-caution">{short_warning(ctx["phase5_final_test_calibration"])}</p>')
 
 
 def legend() -> str:
@@ -144,74 +323,71 @@ def legend() -> str:
     )
 
 
-def limitations(ctx: dict) -> None:
-    years = ctx["past_error_range"]["origins"]
-    first, last = years[0]["origin"], years[-1]["origin"]
-    with st.expander("How to read this and limitations"):
-        st.markdown(
-            f"""
-- **What the lines are.** The model's chance that a project like this one has withdrawn, or reached
-  operation, by each month after entering the queue. It was trained on {ctx["trained_on_rows"]:,}
-  projects in PJM, MISO, CAISO and SPP that entered from 2010 on, with outcomes as of
-  {ctx["outcomes_as_of"]}.
-- **What the shaded band is.** The past-error range. For each of the {len(years)} past test years
-  ({first}–{last} entrants), we measured how far the model's average 3-year prediction was from
-  what happened, then redrew this project's curves with that error. The band spans those
-  redrawn curves. It is not a confidence interval, and it does not cover errors larger than the
-  worst past year.
-- **Why the band sits below the withdrawal line.** In every past test year, fewer projects
-  withdrew than the model predicted. Treat the line as an upper end.
-- **Horizon.** Predictions were checked against real outcomes up to {ctx["evaluated_months"]}
-  months only. Beyond that (the grey area), the curves are unchecked.
-- **The deployed model's own accuracy is unknown.** It is refit on every project up to the end of
-  2025, so there is no later cohort to check it against yet. That takes 3 to 5 more years of
-  outcomes. The evidence behind it is the backtest of the same fitting procedure on earlier years.
-- **Use.** Compare setups with each other. The probabilities are not literal odds, and the
-  explanations describe what the model relies on, not what causes withdrawal or completion.
-- Full details: [model card]({MODEL_CARD}).
-"""
-        )
-
-
-def outlook_tab(svc: Service, project: ProjectInput, ctx: dict) -> None:
+def curves_tab(project: ProjectInput, ctx: dict) -> None:
     pred = predict(project)
+    html(
+        '<p class="qi-prose">The model\'s month-by-month chance of each outcome, with the range '
+        "its past errors imply. Use these for comparing setups, not as odds.</p>"
+    )
     st.altair_chart(
         charts.outlook(pred, ctx["observed_reference"], ctx["evaluated_months"]),
         width="stretch",
         theme=None,
     )
-    st.markdown(legend(), unsafe_allow_html=True)
+    html(legend())
     if pred["county"]["assumed"]:
-        st.markdown(
-            f'<p class="qi-muted">{assumed_county_text(pred, project)}</p>', unsafe_allow_html=True
-        )
-    st.markdown(summary_html(pred), unsafe_allow_html=True)
+        html(f'<p class="qi-muted">{assumed_county_text(pred, project)}</p>')
+    html(summary_html(pred))
     caution = f"{ctx['calibration_warning']} {band_check_text(ctx['past_error_range'])}"
-    st.markdown(f'<p class="qi-caution">{caution}</p>', unsafe_allow_html=True)
+    html(f'<p class="qi-caution">{caution}</p>')
     with st.expander("Show the curves as a table"):
         st.dataframe(curve_table(pred), hide_index=True, width="stretch")
-    limitations(ctx)
 
 
-def compare_tab(project: ProjectInput | None) -> None:
+def why_tab(project: ProjectInput, ctx: dict) -> None:
+    with st.spinner("Working out the explanation ..."):
+        ex = explain(project)
+    if ex["county"]["assumed"]:
+        html(f'<p class="qi-muted">{assumed_county_text(ex, project)}</p>')
+    html(
+        '<p class="qi-prose">Each bar shows how many percentage points a group of features moves '
+        "this project's prediction, compared with the model's average prediction for "
+        f"{ctx['background_years'][0]}–{ctx['background_years'][1]} entrants. This is what the "
+        "model relies on, not proof of cause, and a group can move predictions without improving "
+        "them.</p>"
+    )
+    cols = st.columns(2, gap="large")
+    for col, (key, t) in zip(cols, ex["targets"].items(), strict=True):
+        ref = ctx["observed_reference"][key]
+        with col:
+            st.subheader(f"{STAT_LABELS[key]}: {pct(t['prediction'])}")
+            html(
+                f'<p class="qi-muted">Model average for recent entrants {pct(t["baseline"])}. '
+                f"Observed for {ref['cohort']} entrants {pct(ref['observed'])}.</p>"
+            )
+            st.altair_chart(charts.contributions(t), width="stretch", theme=None)
+            html(f'<p class="qi-prose">{ex["drivers"][key]}</p>')
+
+
+def shortlist_tab(project: ProjectInput | None) -> None:
     saved: list[dict] = st.session_state.setdefault("compare", [])
     names = [p["name"] for p in saved]
     full = len(saved) >= MAX_COMPARE
-    if st.button(
-        "Add current project to comparison",
+    c1, c2 = st.columns([2, 1], vertical_alignment="bottom")
+    c1.text_input("Name for this setup", value="Project A", max_chars=40, key="project_name")
+    if c2.button(
+        "Add to shortlist",
         disabled=project is None or full,
-        help=f"Up to {MAX_COMPARE} projects." if full else None,
+        help=f"Up to {MAX_COMPARE} setups." if full else None,
     ):
         entry = project.model_dump()
-        entry["name"] = unique_name(entry["name"], names)
+        entry["name"] = unique_name(st.session_state.project_name.strip() or "Project", names)
         saved.append(entry)
         st.rerun()
     if not saved:
-        st.markdown(
-            '<p class="qi-muted qi-prose">No projects to compare yet. Set up a project on the '
-            "left, add it here, then change one thing (technology, size, state) and add it "
-            "again.</p>",
-            unsafe_allow_html=True,
+        html(
+            '<p class="qi-muted qi-prose">Nothing shortlisted yet. Add this setup, change one '
+            "thing (technology, size, county) and add it again to see them side by side.</p>"
         )
         return
     preds = compare(json.dumps(saved))
@@ -228,46 +404,54 @@ def compare_tab(project: ProjectInput | None) -> None:
             width="stretch",
             theme=None,
         )
-    st.markdown(
-        '<p class="qi-muted">Dot: model. Line: past-error range.</p>', unsafe_allow_html=True
-    )
+    html('<p class="qi-muted">Dot: model. Line: past-error range.</p>')
     st.dataframe(compare_table(preds), hide_index=True, width="stretch")
     for i, (p, pred) in enumerate(zip(saved, preds, strict=True)):
-        c1, c2 = st.columns([5, 1], vertical_alignment="center")
-        c1.markdown(f"**{p['name']}**: {describe_project(p, pred['county'])}")
-        if c2.button("Remove", key=f"remove-{i}"):
+        a, b = st.columns([5, 1], vertical_alignment="center")
+        a.markdown(f"**{p['name']}**: {describe_project(p, pred['county'])}")
+        if b.button("Remove", key=f"remove-{i}"):
             saved.pop(i)
             st.rerun()
 
 
-def why_tab(project: ProjectInput, ctx: dict) -> None:
-    with st.spinner("Working out the explanation ..."):
-        ex = explain(project)
-    if ex["county"]["assumed"]:
-        st.markdown(
-            f'<p class="qi-muted">{assumed_county_text(ex, project)}</p>', unsafe_allow_html=True
-        )
+def read_tab(ctx: dict) -> None:
+    years = ctx["past_error_range"]["origins"]
+    first, last = years[0]["origin"], years[-1]["origin"]
     st.markdown(
-        '<p class="qi-prose">Each bar shows how many percentage points a group of features moves '
-        "this project's prediction, compared with the model's average prediction for "
-        f"{ctx['background_years'][0]}–{ctx['background_years'][1]} entrants. This is what the "
-        "model relies on, not proof of cause, and a group can move predictions without improving "
-        "them.</p>",
-        unsafe_allow_html=True,
+        f"""
+- **Why the main answer is real history.** The model's percentages ran high on recent projects,
+  but it does better at ranking projects against each other. So the page leads with what actually
+  happened to comparable past projects, and uses the model only to place this project among
+  recent entrants. How far each ranking can be trusted is shown next to it.
+- **Comparable projects** share the grid operator and technology, and entered in the latest four
+  years that are fully followed up for the chosen horizon. If fewer than 30 match, all of the grid
+  operator's projects are used, and the sentence says so.
+- **The model** was trained on {ctx["trained_on_rows"]:,} projects in PJM, MISO, CAISO and SPP that
+  entered from 2010 on, with outcomes as of {ctx["outcomes_as_of"]}.
+- **The shaded band** under "Model curves" is the past-error range. For each of the {len(years)}
+  past test years ({first}–{last} entrants), we measured how far the model's average 3-year
+  prediction was from what happened, then redrew the curves with that error. It is not a confidence
+  interval. {band_check_text(ctx["past_error_range"])}
+- **Horizon.** Predictions were checked against real outcomes up to {ctx["evaluated_months"]}
+  months only.
+- **The deployed model's own accuracy is unknown.** It is refit on every project up to the end of
+  2025, so there is no later cohort to check it against yet. That takes 3 to 5 more years.
+- **Not causal.** Explanations describe what the model relies on, not what causes withdrawal or
+  completion.
+- Full details: [model card]({MODEL_CARD}).
+"""
     )
-    cols = st.columns(2, gap="large")
-    for col, (key, t) in zip(cols, ex["targets"].items(), strict=True):
-        ref = ctx["observed_reference"][key]
-        with col:
-            st.subheader(f"{STAT_LABELS[key]}: {pct(t['prediction'])}")
-            st.markdown(
-                f'<p class="qi-muted">Model average for recent entrants {pct(t["baseline"])}. '
-                f"Observed for {ref['cohort']} entrants {pct(ref['observed'])}.</p>",
-                unsafe_allow_html=True,
-            )
-            st.altair_chart(charts.contributions(t), width="stretch", theme=None)
-            st.markdown(f'<p class="qi-prose">{ex["drivers"][key]}</p>', unsafe_allow_html=True)
-    st.markdown(f'<p class="qi-caution">{ctx["calibration_warning"]}</p>', unsafe_allow_html=True)
+
+
+def footer(ctx: dict) -> None:
+    a = ctx["data_attribution"]
+    html(
+        f'<footer class="qi-footer">Data: <a href="{a["source"]}">Queued Up</a>, Lawrence Berkeley '
+        f'National Laboratory and GridTracker, <a href="{a["license"]}">CC BY 4.0</a>. Modified: '
+        "filtered, cleaned and modelled. Not endorsed by LBNL or GridTracker. County shapes: US "
+        f'Census Bureau. <a href="{MODEL_CARD}">Model card</a>. <a href="{REPO}">Source code</a>.'
+        "</footer>"
+    )
 
 
 def main() -> None:
@@ -277,42 +461,32 @@ def main() -> None:
         st.error(f"The model isn't available. {e}")
         st.stop()
     ctx = svc.context()
-    left, right = st.columns([1, 2.6], gap="large")
-    with left:
-        st.markdown(
-            '<p class="qi-mark">QueueIQ</p><p class="qi-sub">Interconnection queue outlook</p>',
-            unsafe_allow_html=True,
-        )
-        project, problems = project_form(svc)
-        a = ctx["data_attribution"]
-        st.markdown(
-            f'<p class="qi-muted">Data: <a href="{a["source"]}">Queued Up</a>, Lawrence Berkeley '
-            f'National Laboratory and GridTracker, <a href="{a["license"]}">CC BY 4.0</a>. '
-            "Modified: filtered, cleaned and modelled. Not endorsed by LBNL or GridTracker.</p>",
-            unsafe_allow_html=True,
-        )
-    with right:
-        # on_change="rerun" tracks the open tab, so the explanation (about 1 s) is computed only
-        # when its tab is open.
-        outlook, comparison, why = st.tabs(
-            ["Outlook", "Compare", "Why this prediction"], key="view", on_change="rerun"
-        )
-        with outlook:
-            if problems:
-                for msg in problems:
-                    st.error(msg)
-            else:
-                outlook_tab(svc, project, ctx)
-        with comparison:
-            compare_tab(project)
-        with why:
-            if problems:
-                st.markdown(
-                    '<p class="qi-muted">Fix the inputs on the left to see an explanation.</p>',
-                    unsafe_allow_html=True,
-                )
-            elif why.open:
-                why_tab(project, ctx)
+    init_location(svc)
+    header(ctx)
+    where_section(svc)
+    project, problems = what_section(svc)
+    if problems:
+        for msg in problems:
+            st.error(msg)
+    else:
+        answer_section(svc, project, ctx)
+    html('<div class="qi-section">Details</div>')
+    # on_change="rerun" tracks the open tab, so heavy content runs only when its tab is open.
+    tabs = st.tabs(
+        ["Model curves", "Why", "Shortlist", "How to read this"], key="details", on_change="rerun"
+    )
+    with tabs[0]:
+        if project and tabs[0].open:
+            curves_tab(project, ctx)
+    with tabs[1]:
+        if project and tabs[1].open:
+            why_tab(project, ctx)
+    with tabs[2]:
+        if tabs[2].open:
+            shortlist_tab(project)
+    with tabs[3]:
+        read_tab(ctx)
+    footer(ctx)
 
 
 main()

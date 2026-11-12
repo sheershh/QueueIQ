@@ -69,9 +69,15 @@ class Options:
     counties: dict[str, list[County]]  # state -> counties seen in LBNL data (any region)
     capacity_max: float
     largest_state: dict[str, str]  # iso -> state with the most in-scope projects (form default)
+    state_isos: dict[str, list[str]]  # state -> ISOs offering it, most in-scope projects first
 
     @classmethod
-    def from_entries(cls, entries: pd.DataFrame) -> "Options":
+    def from_entries(
+        cls, entries: pd.DataFrame, map_counties: list[dict] | None = None
+    ) -> "Options":
+        """map_counties: [{key, name, state}] for every county in the covered states (from the
+        Census shapes). Counties with no LBNL rows are added with requests=0, so any county on
+        the map can be chosen: no earlier requests there is a real, valid answer."""
         scoped = entries[entries["in_model_scope"]]
         counts = scoped.groupby(["iso", "state"]).size()
         states = {
@@ -97,10 +103,26 @@ class Options:
                     requests=len(g),
                 )
             )
+        for mc in map_counties or []:
+            have = {c.key for c in counties.get(mc["state"], [])}
+            if mc["state"] in offered and mc["key"] not in have:
+                counties.setdefault(mc["state"], []).append(
+                    County(
+                        key=mc["key"],
+                        name=mc["name"],
+                        fips_code=mc["key"],
+                        county=mc["name"],
+                        requests=0,
+                    )
+                )
         for state in counties:
             counties[state].sort(key=lambda c: c.name)
         largest = {iso: counts[iso].idxmax() for iso in ISOS if states[iso]}
-        return cls(states, counties, float(scoped["capacity_mw"].max()), largest)
+        state_isos = {
+            s: sorted((i for i in ISOS if s in states[i]), key=lambda i: -counts[(i, s)])
+            for s in offered
+        }
+        return cls(states, counties, float(scoped["capacity_mw"].max()), largest, state_isos)
 
     def busiest_county(self, state: str) -> County | None:
         """Form default: the county with the most past requests in the state."""

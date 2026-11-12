@@ -1,26 +1,30 @@
 {
   "repo": "sheershh/QueueIQ",
-  "tag": "deploy-assets-v1",
+  "tag": "deploy-assets-v2",
   "files": {
     "deploy_primary.joblib": {
       "path": "models/deploy_primary.joblib",
-      "bytes": 90149364,
-      "sha256": "a6512a902951ec76c24b1ae81f1937b434d35348fdabd4170b3bd9a039d5a32c"
+      "bytes": 90149378,
+      "sha256": "720599067cd758da71e9ae3653fa7d7cbf89832ac37fb5be3fc90bcbf12d344c",
+      "refresh": true
     },
     "deploy_meta.json": {
       "path": "models/deploy_meta.json",
-      "bytes": 5344,
-      "sha256": "f843487885c31d591d97468cd02510343a4d74e6b656f2a8a3b82ee1b7bca14c"
+      "bytes": 20534,
+      "sha256": "bf8e36b43c7e87963bacaacdc714c4403d7eabc96ccfb949b675f87b2d193eb2",
+      "refresh": true
     },
     "deploy_background.parquet": {
       "path": "models/deploy_background.parquet",
       "bytes": 14340,
-      "sha256": "817699060a98b53f1a8432f18ebbaad76862f24201e2f14bcd4d0fa418f8b386"
+      "sha256": "817699060a98b53f1a8432f18ebbaad76862f24201e2f14bcd4d0fa418f8b386",
+      "refresh": true
     },
     "queue_history.parquet": {
       "path": "data/processed/queue_entries.parquet",
       "bytes": 676092,
-      "sha256": "190ca5cec1ebe08ff7ec7294d943a646f1514566331c1c443c347793777bf6ab"
+      "sha256": "190ca5cec1ebe08ff7ec7294d943a646f1514566331c1c443c347793777bf6ab",
+      "refresh": false
     }
   }
 }

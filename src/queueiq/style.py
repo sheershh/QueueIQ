@@ -82,5 +82,9 @@ UI = {
     "rule": "#D8DDDA",
     "accent": "#0E6B66",
 }
+# Map: share of nearby requests already withdrawn, light (low) to dark (high). One hue, lightness
+# steps 0.93 -> 0.41 in OKLab (checked monotonic); never blue or orange, which mean outcomes.
+CROWDING_RAMP = ["#D9ECE7", "#AFD5CB", "#7DB9AC", "#4C9A8D", "#1F7A70", "#0B5550"]
+MAP_NO_DATA = "#E3E6E3"  # states the model does not cover, and counties with no recent requests
 UI_FONT = "Public Sans"
 UI_FONT_SIZES = {"body": 14, "section": 18, "figure": 28}  # px; no other sizes in the app

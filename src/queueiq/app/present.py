@@ -155,3 +155,112 @@ def unique_name(name: str, taken: list[str]) -> str:
     while f"{name} ({i})" in taken:
         i += 1
     return f"{name} ({i})"
+
+
+# -- history-first answer (D-057, D-058) ------------------------------------------------------
+TECH_LABELS = {
+    "solar": "Solar",
+    "wind": "Wind",
+    "battery": "Battery",
+    "gas": "Gas",
+    "other": "Other",
+}
+TECH_PHRASES = {
+    "solar": "solar",
+    "wind": "wind",
+    "battery": "battery",
+    "gas": "gas",
+    "other": "other-technology",
+}
+GRID_ORDER = ("withdrawn", "operational", "waiting")
+GRID_LABELS = {"withdrawn": "Withdrawn", "operational": "Operating", "waiting": "Still waiting"}
+
+
+def plural(n: int, word: str) -> str:
+    return f"{n:,} {word}" + ("" if n == 1 else "s")
+
+
+def share_text(x: float) -> str:
+    if x == 0:
+        return "none"
+    if x < 0.005:
+        return "under 1%"
+    return f"{round(100 * x)}%"
+
+
+def history_sentence(c: dict, iso: str, fuel: str) -> str:
+    """'Of 2,163 PJM solar projects that entered in 2019–2022, 32% had withdrawn within 3 years,
+    under 1% were operating and 68% were still waiting.'"""
+    years = f"{c['years'][0]}–{c['years'][1]}"
+    horizon = c["horizon_months"] // 12
+    tail = (
+        f"{share_text(c['withdrawn'])} had withdrawn within {horizon} years, "
+        f"{share_text(c['operational'])} were operating and {share_text(c['waiting'])} were "
+        "still waiting."
+    )
+    if c["fallback"]:
+        return (
+            f"Too few {iso} {TECH_PHRASES[fuel]} projects to report on their own, so this uses "
+            f"all {c['n']:,} {iso} projects that entered in {years}: {tail}"
+        )
+    return f"Of {c['n']:,} {iso} {TECH_PHRASES[fuel]} projects that entered in {years}, {tail}"
+
+
+def grid_counts(c: dict) -> dict[str, int]:
+    """Shares as whole squares out of 100 (largest remainder, so they always add up to 100)."""
+    raw = {k: 100 * c[k] for k in GRID_ORDER}
+    counts = {k: int(v) for k, v in raw.items()}
+    for k in sorted(GRID_ORDER, key=lambda k: raw[k] - counts[k], reverse=True)[
+        : 100 - sum(counts.values())
+    ]:
+        counts[k] += 1
+    return counts
+
+
+def outcome_grid_html(c: dict) -> str:
+    """100 squares, one per 1% of comparable projects, filled once in outcome colors."""
+    counts = grid_counts(c)
+    cells, i = [], 0
+    for k in GRID_ORDER:
+        for _ in range(counts[k]):
+            cells.append(f'<i class="qi-cell qi-{k}" style="--i:{i}"></i>')
+            i += 1
+    summary = ", ".join(f"{counts[k]} {GRID_LABELS[k].lower()}" for k in GRID_ORDER)
+    legend = "".join(
+        f'<span><i class="qi-cell qi-{k}"></i>{GRID_LABELS[k]} {share_text(c[k])}</span>'
+        for k in GRID_ORDER
+    )
+    return (
+        f'<div class="qi-grid" role="img" aria-label="Out of 100 comparable projects: {summary}">'
+        f'{"".join(cells)}</div><div class="qi-grid-legend">{legend}</div>'
+    )
+
+
+def evidence_text(e: dict) -> str:
+    """Plain-language reading of the model's 3-year AUC for one outcome."""
+    return (
+        f"{e['label'].capitalize()}: in back-tests, given one project that had this outcome and "
+        f"one that did not, the model ranked them the right way round {round(100 * e['auc'])}% "
+        "of the time (a coin flip would be 50%)."
+    )
+
+
+def percentile_html(label: str, t: dict, years: list[int]) -> str:
+    p = round(t["percentile"])
+    return (
+        f'<div class="qi-pctl"><div class="qi-pctl-label">{label}</div>'
+        f'<div class="qi-pctl-value">Higher than {p}% of {years[0]}–{years[1]} entrants</div>'
+        f'<div class="qi-track" role="img" aria-label="{p}th percentile">'
+        f'<span class="qi-marker" style="left:{p}%"></span></div>'
+        f'<div class="qi-muted">{evidence_text(t["evidence"])}</div></div>'
+    )
+
+
+def short_warning(cal: dict) -> str:
+    wd = cal["withdrawn"]
+    return (
+        "The model's own percentages run high on recent projects: for 2021–22 entrants it "
+        f"predicted {round(100 * wd['predicted'])}% would withdraw within 3 years, and "
+        f"{round(100 * wd['observed'])}% did. That is why the main answer above uses real "
+        "outcomes, and the model only ranks this project against others."
+    )

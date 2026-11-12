@@ -91,7 +91,10 @@ def app(svc, monkeypatch):
 def test_app_renders_outlook_without_errors(app):
     assert not app.exception
     assert not app.error
-    assert [t.label for t in app.tabs] == ["Outlook", "Compare", "Why this prediction"]
+    assert [t.label for t in app.tabs] == ["Model curves", "Why", "Shortlist", "How to read this"]
+    text = " ".join(m.value for m in app.markdown)
+    assert "real outcomes" in text and "projects that entered in" in text  # history first
+    assert "evidence" in text  # percentile bars carry their evidence label
     assert any("Past-error range" in m.value for m in app.markdown)
 
 

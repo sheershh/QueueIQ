@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "build" / "assets"
 MANIFEST = ROOT / "deploy" / "streamlit_cloud" / "assets.json"
 REPO = "sheershh/QueueIQ"
-TAG = "deploy-assets-v1"
+TAG = "deploy-assets-v2"
 HISTORY_NAME = "queue_history.parquet"
 
 
@@ -49,6 +49,7 @@ def main() -> None:
                 "path": str(dest),
                 "bytes": (OUT / name).stat().st_size,
                 "sha256": sha256(OUT / name),
+                "refresh": str(dest).startswith("models/"),
             }
             for name, dest in files.items()
         },

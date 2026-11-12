@@ -681,3 +681,61 @@ against LBNL's "over 5 years". The full table is in `reports/eda.md`.
   every app page carry the attribution, license link, statement of changes and no-endorsement note.
 - **Risk:** Community Cloud's memory limit is tight for the forest (about 1.4 GB peak). If the app does
   not fit, it is taken down and the repository stays local-run only.
+
+## Phase 9: product redesign, history first and map first (2026-11-12)
+
+### D-057: Lead with what happened to comparable projects, not with model percentages
+- **Why:** Phase 5 showed the model's probability *levels* are unreliable on recent cohorts (51.6%
+  predicted vs 34.3% observed withdrawn for 2021–22 entrants), while its *ranking* carries some signal.
+  Leading with model percentages put the weakest part of the model in the most prominent place.
+- **What:** the main answer is the real outcome mix of comparable past projects: same grid operator and
+  technology, in the latest four entry years with complete follow-up for the chosen horizon (2019–2022 for
+  3 years, 2017–2020 for 5 years). Each project counts as withdrawn or operating only if that happened
+  before the horizon; everyone else was still waiting. Groups under 30 projects fall back to the whole
+  grid operator, and the sentence says so. The count is always shown. These tables are computed by
+  `service/history.py` at `make train` and stored in `deploy_meta.json`.
+- **Display:** a plain sentence plus a 10×10 grid of squares in the outcome colors (rounded by largest
+  remainder so it always shows 100). The grid fills once; motion is off when the visitor asks for reduced
+  motion.
+
+### D-058: The model's role is a percentile, labelled with how far it can be trusted
+- For each 3-year outcome, the project's prediction is placed among the model's predictions for all
+  6,408 in-scope 2021–2025 entrants (101 stored quantiles, linear interpolation).
+- Each percentile carries an evidence label read from `reports/evaluation_metrics.csv`, using the most
+  recent estimable 3-year AUC of the primary configuration:
+  - **withdrawal:** final test, AUC 0.559, labelled "weak evidence";
+  - **operation:** pooled development, AUC 0.723, "moderate evidence" (not estimable on the final test).
+  Thresholds: 0.70 and above "moderate", 0.60 to 0.70 "some", below 0.60 "weak". No figure is hand-typed.
+- The plain-language reading of AUC ("ranked the right way round 72% of the time; a coin flip would be
+  50%") follows its definition: the probability that a project with the outcome ranks above one without.
+- The model curves, past-error band, exact numbers and explanations remain one click away under
+  "Details" (lazy tabs, as before).
+
+### D-059: A 3D county map, built from public Census shapes
+- **Shapes:** US Census Bureau cartographic boundary files, 2024, 1:20,000,000 (public domain), downloaded
+  by `make geo` and checked against pinned SHA-256 values (`scripts/build_geo.py`). Only counties in the 29
+  covered states are kept; coordinates are rounded to 3 decimals. Output: `src/queueiq/assets/*.geojson`
+  (1 MB, committed).
+- **Encoding:** column height = requests filed in the county in the 5 years before 1 January 2026
+  (square-root scale, stated in the legend, so a few very busy counties don't flatten the rest); color =
+  share of those already withdrawn, on a one-hue ramp whose OKLab lightness steps evenly from 0.93 to 0.41.
+  Blue and orange stay reserved for outcomes. Uncovered states are flat grey with "No reliable queue
+  history here".
+- These numbers equal the county congestion features a new project would get: a test checks
+  `service/geo.county_crowding` against `project_features` for every county (0 mismatches on the real
+  data for 40 sampled counties as well).
+- **Selecting:** clicking a county selects it; state and grid operator follow, and a choice appears where
+  a state has two operators. Every county in the covered states can be chosen, including ones with no
+  LBNL history (they have zero earlier requests, which is a valid answer). A keyboard-accessible list is
+  kept under "Choose from a list instead". Map: pydeck in Streamlit, Carto basemap, no paid key.
+- **Testing note:** in headless Chrome (software WebGL) some map clicks don't register; in a real Chrome
+  every click registered. The screenshot script tries a grid of points.
+
+### D-060: This redesign departs from the original "calm analyst tool" brief, on purpose
+- The original brief asked for a calm, dense analyst page with curves first. After seeing it live, the
+  author asked for a more approachable product with 3D and motion. The redesign keeps the brief's
+  substance (one palette module, three font sizes, no decoration without meaning, honest uncertainty) and
+  spends the new visual budget only where it encodes data: the map's height and color, and the outcome
+  grid.
+- Other countries were considered and left out: no comparable public queue history was verified for
+  them, and the US model would not transfer. Listed as a next step.

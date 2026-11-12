@@ -69,3 +69,13 @@ file is missing or different, it stops and explains how to get it. See decisions
   Our choice not to commit the raw file stays (reproducibility via checksum; D-008). This is a reading of
   the public license, not legal advice. Before any public deployment, the author should confirm with LBNL
   if in doubt, especially about the "subject to DOE approvals" and "All rights reserved" wording.
+
+## Secondary source: US Census Bureau county and state shapes (Phase 9)
+| Field | Value |
+|---|---|
+| Publisher | US Census Bureau, Geography Division |
+| Product | Cartographic boundary files, 2024, 1:20,000,000 (`cb_2024_us_county_20m.zip`, `cb_2024_us_state_20m.zip`) |
+| URL | https://www2.census.gov/geo/tiger/GENZ2024/shp/ |
+| License | Public domain (US government work) |
+| SHA-256 | county `c9a54fd95422436b8822e0b070a45a9bc3de08eb13f943cdba66e7a9c2a135ff`; state `7bc773d83c01b6df69b8aada9c2b5983d97f22f4551947cc5c00b87c663223ef` (checked by `make geo`) |
+| Used for | Drawing the map only. County keys (5-digit FIPS) match LBNL's `fips_code`. No model input comes from these files. |

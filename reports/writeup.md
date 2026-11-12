@@ -103,20 +103,31 @@ that is not the same as improving them.
 
 ## The dashboard
 
-The dashboard lets you describe a project (grid operator, state, county, technology, size, storage). It then
-shows the two curves for a project joining on 1 January 2026, a summary row, a side-by-side comparison of up to
-five setups, and a breakdown of what pushed each prediction up or down.
+The dashboard is live at https://queueiq.streamlit.app. You click a county on a 3D map of the covered
+states: column height is how many projects asked to connect there recently, color is how many of those
+already gave up. Then you pick the technology and size.
+
+The first version led with the model's percentages, and that was the wrong thing to put first. Those
+percentages are exactly where the model is weakest. So the redesigned page leads with **what actually
+happened** to comparable past projects, as a sentence and a grid of 100 squares. For example: of 2,163 PJM
+solar projects that entered in 2019–2022, 32% had withdrawn within 3 years, under 1% were operating, and 68%
+were still waiting.
+
+The model only does what it is somewhat good at: ranking this project against recent entrants. Each ranking
+says how far it can be trusted, in plain words: in back-tests, the model put the right project first 72% of
+the time for reaching operation (moderate), but only 56% for withdrawal (weak, where a coin flip is 50%).
 
 Three choices keep it honest:
 
-- **The shaded band is built from the model's own past mistakes.** For each past test year I measured how far
-  off its average prediction was, then redrew the curves with that error. The band shows where the answer lands
-  if the model is as wrong as it has been before. It is not a confidence interval. When I checked it against
-  the 2021–22 projects, it covered the withdrawal rate but not the operation rate, and the dashboard says so.
-- **The unchecked part is greyed out.** Predictions were only ever tested up to 5 years, so the curves beyond
-  that are marked as unchecked.
+- **The model's curves come with a band built from its own past mistakes.** For each past test year I
+  measured how far off its average prediction was, then redrew the curves with that error. The band shows
+  where the answer lands if the model is as wrong as it has been before. It is not a confidence interval.
+  When I checked it against the 2021–22 projects, it covered the withdrawal rate but not the operation
+  rate, and the dashboard says so.
+- **The unchecked part is greyed out.** Predictions were only ever tested up to 5 years, so the curves
+  beyond that are marked as unchecked.
 - **Nothing is assumed silently.** If you don't pick a county, the busiest county in the state is used, and
-  the screen names it. The outlook and explanation tabs both repeat the over-prediction warning.
+  the screen names it.
 
 ## What I learned
 
