@@ -79,3 +79,15 @@ file is missing or different, it stops and explains how to get it. See decisions
 | License | Public domain (US government work) |
 | SHA-256 | county `c9a54fd95422436b8822e0b070a45a9bc3de08eb13f943cdba66e7a9c2a135ff`; state `7bc773d83c01b6df69b8aada9c2b5983d97f22f4551947cc5c00b87c663223ef` (checked by `make geo`) |
 | Used for | Drawing the map only. County keys (5-digit FIPS) match LBNL's `fips_code`. No model input comes from these files. |
+
+## Redistribution in the hosted app (Phases 8 and 9)
+- The original XLSX file is never redistributed.
+- The hosted dashboard (https://queueiq.streamlit.app) downloads files derived from it from this
+  repository's GitHub Releases (`deploy-assets-v1`, then `deploy-assets-v2`):
+  - the trained model and its metadata;
+  - 64 recent rows of model features (the explanation baseline);
+  - `queue_history.parquet`, the in-scope and out-of-scope queue rows trimmed to the 13 columns the
+    service reads.
+- Every release note, the README, the write-up and every app page carry the CC BY 4.0 attribution, a link
+  to the license, a statement of the changes made, and a note that LBNL and GridTracker do not endorse the
+  project (decisions D-045, D-053, D-056).

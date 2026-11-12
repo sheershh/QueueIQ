@@ -7,7 +7,10 @@ the two outcomes as competing risks, so projects still waiting are not thrown aw
 
 It is trained on Lawrence Berkeley National Laboratory's *Queued Up* data: 14,796 projects that entered the PJM,
 MISO, CAISO and SPP queues from 2010 to 2025. By the end of 2025, 9,627 of them had withdrawn, 1,230 were
-operating and 3,939 were still waiting. It ships as a small API and a dashboard for comparing project setups.
+operating and 3,939 were still waiting.
+
+**Live app: https://queueiq.streamlit.app.** Click a county on a 3D map, describe the project, and see what
+happened to comparable past projects, plus how the model ranks this one. There is also a small API.
 
 **The short version of the results:** the model can tell which projects are more likely to get built, but it
 does little better than chance at telling which will withdraw. Its probabilities also run too high on recent
@@ -104,13 +107,15 @@ explanation. `POST /compare` takes up to 5 projects.
 flowchart LR
   raw["LBNL Queued Up file<br/>(downloaded by hand,<br/>checksum verified)"] --> data["make data<br/>clean + unify<br/>queue_entries.parquet"]
   data --> feats["make features<br/>leakage-safe features<br/>(only what was known at entry)"]
-  feats --> train["make train<br/>4 model families + baselines<br/>deployed forest in models/"]
+  feats --> train["make train<br/>4 model families + baselines<br/>deployed forest, history tables,<br/>percentile reference"]
   feats --> evalp["make evaluate<br/>pre-registered backtest<br/>2014-2022 entrants"]
-  evalp --> reports["reports/ + model card<br/>past-error band"]
-  train --> svc["queueiq.service<br/>features for a new project,<br/>curves, band, explanation"]
+  evalp --> reports["reports/ + model card<br/>past-error band,<br/>evidence labels"]
+  census["US Census county shapes<br/>(make geo, checksum verified)"] --> svc
+  train --> svc["queueiq.service<br/>features for a new project,<br/>history, percentiles, map,<br/>curves, explanation"]
   reports --> svc
   svc --> api["FastAPI<br/>/predict /compare"]
   svc --> app["Streamlit dashboard"]
+  app --> cloud["Streamlit Community Cloud<br/>(model files from a<br/>GitHub Release)"]
 ```
 
 - **Features** for a new project come from the same code that built the training features. A test re-enters
@@ -148,6 +153,9 @@ flowchart LR
 3. **Features closer to where withdrawals happen,** where they are known at entry: point-of-interconnection and
    substation congestion from the operators' own queue exports, and links to EIA-860 plant data.
 4. **Recalibrate by era** instead of one global model, so probability levels follow the current queue.
+5. **Other countries (research first).** The US model can't be applied elsewhere: connection rules differ.
+   Check whether public queue histories with withdrawal and completion dates exist (for example the UK's
+   connections register or India's connectivity grants) before planning a model per country.
 
 ## Reproduce the full pipeline
 
@@ -185,7 +193,11 @@ Lawrence Berkeley National Laboratory & GridTracker.* Licensed under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Source: https://emp.lbl.gov/queues.
 **Changes made:** the data was filtered to PJM, MISO, CAISO and SPP projects entering from 2010, cleaned and
 unified (see [docs/decisions.md](docs/decisions.md)), and used to derive features and fit models. The data
-file itself is not redistributed here. LBNL and GridTracker do not endorse this project.
+file itself is not redistributed. The hosted app downloads a trained model and a trimmed table derived from
+it (13 columns) from this repository's GitHub Releases, which carry the same attribution. LBNL and
+GridTracker do not endorse this project.
+
+**Map shapes.** US Census Bureau cartographic boundary files, 2024 (public domain).
 
 **Code.** MIT License, see [LICENSE](LICENSE). The MIT license covers the code only, not the LBNL data.
 

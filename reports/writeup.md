@@ -98,7 +98,7 @@ set. The honest move is to name that model in advance next time and test it on y
 
 **The queue-crowding features didn't help.** I expected that "how crowded the queue was nearby" would predict
 withdrawal. For the forest model, the version without those features scored better on withdrawal, in
-development and on the final test. They do change individual predictions, which the explanation tab shows, but
+development and on the final test. They do change individual predictions, which the "Why" tab shows, but
 that is not the same as improving them.
 
 ## The dashboard
